@@ -143,7 +143,7 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
     g_M3C2Params.corepointsnomrals = normals; // temporary. normal size should be equal to the corepoint size. if corepoints are changed, 
                                                // normal should be changed also.
     
-    vector<Eigen::Vector3d> newnormals(normals.size());
+    /*vector<Eigen::Vector3d> newnormals(normals.size());
     std::ifstream myfile("D:\\work\\AILib\\SDK\\Algorithms\\Algorithms\\M3C2_small_small_cc.asc");
     string line;
     int _size = 9;
@@ -173,7 +173,7 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
             n++;
         }
         myfile.close();
-    }
+    }*/
 
     // we should return the normals of core points
     // if core points are part of the original point cloud, we call the function below to get the normals of core points
