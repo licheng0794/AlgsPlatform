@@ -107,13 +107,12 @@ void SaveLas(const char* outputfile, vector<Eigen::Vector3d> point3D)
 }
 
 bool SaveLasExtraDims(const char* outputfile, vector<Eigen::Vector3d> point3D,
-	vector<double> val1, vector<int> val2, vector<double> val3)
+	vector<double> val1, vector<double> val2, vector<double> val3)
 {
 	Options las_opt;
 	las_opt.add("filename", outputfile);
-	las_opt.add("extra_dims", "all");
+	las_opt.add("extra_dims", "M3C2dist=double, SigChg=double, LOD=double");
 	double xoffset = 0.0, yoffset = 0.0, zoffset = 0.0;
-
 	las_opt.add("offset_x", xoffset);
 	las_opt.add("offset_y", yoffset);
 	las_opt.add("offset_z", zoffset);
@@ -127,11 +126,11 @@ bool SaveLasExtraDims(const char* outputfile, vector<Eigen::Vector3d> point3D,
 	table.layout()->registerDim(Dimension::Id::Z);
 	table.layout()->registerOrAssignDim("M3C2dist",
 		Dimension::Type::Double);
-	table.layout()->registerOrAssignDim("SignificantChange", Dimension::Type::Unsigned8);
+	table.layout()->registerOrAssignDim("SigChg", Dimension::Type::Double);
 	table.layout()->registerOrAssignDim("LOD", Dimension::Type::Double);
 
 	Dimension::Id dist = table.layout()->findDim("M3C2dist");
-	Dimension::Id sgchg = table.layout()->findDim("SignificantChange");
+	Dimension::Id sgchg = table.layout()->findDim("SigChg");
 	Dimension::Id lod = table.layout()->findDim("LOD");
 
 	PointViewPtr view(new PointView(table));
