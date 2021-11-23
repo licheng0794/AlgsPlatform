@@ -178,8 +178,8 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
     // we should return the normals of core points
     // if core points are part of the original point cloud, we call the function below to get the normals of core points
     //GetCoreNormals(g_M3C2Params.pCloud1->m_point3D, normals, g_M3C2Params.corepoints);
-    g_M3C2Params.corepointsnomrals.clear();
-    g_M3C2Params.corepointsnomrals = newnormals;
+    //g_M3C2Params.corepointsnomrals.clear();
+    //g_M3C2Params.corepointsnomrals = newnormals;
 
     vector <int> corepointindex(cplen, 0);
     for (int i = 0; i < cplen; i++)
