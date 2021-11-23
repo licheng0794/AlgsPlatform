@@ -18,21 +18,23 @@ int main()
     //const char* inputfile = "D:/work/Canlvl325_01_Oct2020/test.las";
     const char* inputfile1 = //"D:/work/Canlvl325_01_Oct2020/Canlvl325_01_13Jan2021.las";
         //"D:/work/python_lib_code/NZ19_Wellington.las";
-        "D:/work/python_lib_code/F5_March_2019_1cm_crop_crop_small.las";
+        "D:/work/python_lib_code/F5_March_2019_1cm_crop_crop_small_small.las";
+        //"D:/work/Canlvl325_01_Oct2020/Canlvl325_01_Oct2020.las";
 
-    //vector<Eigen::Vector3d> bbox(2);
-    //vector<Eigen::Vector3d> point3D = ReadLas(inputfile1, bbox);
-    //PointCloudAI pCloud1(point3D, bbox);
+    vector<Eigen::Vector3d> bbox(2);
+    vector<Eigen::Vector3d> point3D = ReadLas(inputfile1, bbox);
+    PointCloudAI pCloud1(point3D, bbox);
     /*cout << "the point size of the cloud: " << point3D.size() << endl;
     cout << "the x range  of box is: " << (bbox.at(1)[0] - bbox.at(0)[0]) << endl;
     cout << "the y range  of box is: " << (bbox.at(1)[1] - bbox.at(0)[1]) << endl;
     cout << "the z range  of box is: " << (bbox.at(1)[2] - bbox.at(0)[2]) << endl;*/
 
-    const char* inputfile2 = 
-        "D:/work/python_lib_code/F5_October_2019_1cm_crop_crop_register_smalla.las";
+    const char* inputfile2 = //inputfile1;
+        "D:/work/python_lib_code/F5_October_2019_1cm_crop_crop_register_small_small.las";
+        //"D:/work/Canlvl325_01_Oct2020/Canlvl325_01_13Jan2021.las";
 
-    //point3D = ReadLas(inputfile2, bbox);
-    //PointCloudAI pCloud2(point3D, bbox);
+    point3D = ReadLas(inputfile2, bbox);
+    PointCloudAI pCloud2(point3D, bbox);
    /* cout << "the point size of the cloud: " << point3D.size() << endl;
     cout << "the x range  of box is: " << (bbox.at(1)[0] - bbox.at(0)[0]) << endl;
     cout << "the y range  of box is: " << (bbox.at(1)[1] - bbox.at(0)[1]) << endl;
@@ -48,9 +50,11 @@ int main()
 
     //SaveLasExtraDims("result2.las", pCloud1.m_point3D, val1, val2, val3);
 
-    const char* resultfile = "M3C2results2.las";
-    const char* corepointfile = 
-        "D:/work/python_lib_code/F5_March_2019_1cm_crop_crop_small_subsampling.las";
+    const char* resultfile = "M3C2results4.las";
+    const char* corepointfile = inputfile1;
+        //"D:/work/python_lib_code/F5_March_2019_1cm_crop_crop_small_subsampling.las"; 
+        
+        //"D:/work/Canlvl325_01_Oct2020/Canlvl325_01_Oct2020_subsampling.las";
 
     // test M3C2 function
     M3C2(inputfile1, inputfile2, corepointfile, resultfile);
@@ -102,33 +106,4 @@ int main()
     //    cout << new_indices_vec[i] << endl;
     //}
     
-
-    
-
-    /*
-    int nodata = 10;
-    vector <Eigen::Vector3d> data(nodata, Eigen::Vector3d(0, 0, 0));
-
-    vector <int> pointindex(nodata, 0);
-    for (int i = 0; i < nodata; i++)
-    {
-        pointindex[i] = i;
-    }
-
-    std::clock_t start;
-    double duration;
-
-    start = std::clock(); // get current time
-
-    parallel_for_each(pointindex.begin(), pointindex.end(), [](int value) {
-         cout<<sumvale(value)<<endl;
-        });
-
-    duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
-
-    std::cout << "Operation took " << duration << "seconds" << std::endl;
-    */
-
-   
-
 }

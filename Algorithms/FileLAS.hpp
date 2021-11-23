@@ -34,4 +34,4 @@ vector<Eigen::Vector3d> ReadLas(const char* inputfile, vector<Eigen::Vector3d>& 
 void SaveLas(const char* outputfile, vector<Eigen::Vector3d> point3D);
 
 bool SaveLasExtraDims(const char* outputfile, vector<Eigen::Vector3d> point3D,
-	vector<double> val1, vector<int> val2, vector<double> val3);
+	vector<double> val1, vector<double> val2, vector<double> val3);
