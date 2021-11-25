@@ -18,8 +18,6 @@ using namespace concurrency;
 
 using namespace std;
 
-vector <Eigen::Vector3d> pointxx(2, Eigen::Vector3d(0,0,0));
-vector <Eigen::Vector3d> bboxx(2, Eigen::Vector3d(0, 0, 0));
 
 
 struct M3C2Params {
@@ -46,34 +44,6 @@ struct M3C2Params {
 
 static M3C2Params g_M3C2Params;
 
-int getIndex(vector<Eigen::Vector3d> v, Eigen::Vector3d K)
-{
-    int a = 1;
-
-    auto it = find(v.begin(), v.end(), K);
-
-    assert(it != v.end()); // If the element is not present in the vector
-
-    // calculating the index
-    // of K
-    int index = it - v.begin();
-    return index;
-    
-}
-
-void GetCoreNormals(vector <Eigen::Vector3d>originalpoints, vector <Eigen::Vector3d>originalnormals, vector <Eigen::Vector3d>corepoints)
-{
-    vector <Eigen::Vector3d> corepointsnormals;
-
-    for (int i=0; i < corepoints.size(); i++)
-    {
-        int index = getIndex(originalpoints, corepoints[i]);
-        corepointsnormals.push_back(originalnormals[index]);
-    }
-    g_M3C2Params.corepointsnomrals = corepointsnormals;
-}
-
-
 void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const char* outcloud)
 {
 
@@ -81,12 +51,12 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
     cout << "1. Reading the reference point cloud!" << endl;
     vector<Eigen::Vector3d> point3D = ReadLas(incloud1, bbox);
     g_M3C2Params.pCloud1 = new PointCloudAI(point3D, bbox);
-    cout << "   The reference point cloud has " << point3D.size() << " points!" << endl;
+    cout << "   the reference point cloud has " << point3D.size() << " points!" << endl;
 
     cout << "2. Reading the target point cloud!" << endl;
     point3D = ReadLas(incloud2, bbox);
     g_M3C2Params.pCloud2 = new PointCloudAI(point3D, bbox);
-    cout << "   The target point cloud has " << point3D.size() << " points!" << endl;
+    cout << "   the target point cloud has " << point3D.size() << " points!" << endl;
 
     using namespace open3d::geometry;
     PointCloud pointcloud1;
@@ -105,12 +75,12 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
     double projDepth = 0;
 
     cout << "5. Estimating proper parameters ..." << endl;
-    //ParamEstimate(*g_M3C2Params.pCloud1, *g_M3C2Params.pCloud2, normalScale, projScale, projDepth);
+    ParamEstimate(*g_M3C2Params.pCloud1, *g_M3C2Params.pCloud2, normalScale, projScale, projDepth);
 
     //g_M3C2Params.corepoints = g_M3C2Params.pCloud1->m_point3D; // temporary
-    /*g_M3C2Params.normalScale = normalScale;
+    g_M3C2Params.normalScale = normalScale;
     g_M3C2Params.projScale = projScale;
-    g_M3C2Params.projDepth = projDepth;*/
+    g_M3C2Params.projDepth = projDepth;
 
     g_M3C2Params.normalScale = 0.315625;
     g_M3C2Params.projScale = 0.315625;
@@ -120,7 +90,7 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
     if (strcmp(incloud1, cpcloud)==0)
     {
         g_M3C2Params.corepoints = g_M3C2Params.pCloud1->m_point3D;
-        cout << "the core point is the same with the reference point cloud!" << endl;
+        cout << "   the core point is the same with the reference point cloud!" << endl;
     }
     else
     {
@@ -134,17 +104,19 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
     //}
 
     int cplen = g_M3C2Params.corepoints.size();
-    cout << "   The core point cloud has " << cplen << " points!" << endl;
+    cout << "   the core point cloud has " << cplen << " points!" << endl;
 
 
     cout << "7. Computing normal of core points!" << endl;
     // here we get normals for the whole point cloud !!!
     vector<Eigen::Vector3d> normals = g_M3C2Params.pCloud1->NormalEstimationRadius(g_M3C2Params.normalScale/2); 
+    
+    
     g_M3C2Params.corepointsnomrals = normals; // temporary. normal size should be equal to the corepoint size. if corepoints are changed, 
                                                // normal should be changed also.
     
     /*vector<Eigen::Vector3d> newnormals(normals.size());
-    std::ifstream myfile("D:\\work\\AILib\\SDK\\Algorithms\\Algorithms\\M3C2_small_small_cc.asc");
+    std::ifstream myfile("D:\\work\\AILib\\SDK\\Algorithms\\Algorithms\\M3C2_small_cc.asc");
     string line;
     int _size = 9;
     int n = 0;
@@ -175,11 +147,6 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
         myfile.close();
     }*/
 
-    // we should return the normals of core points
-    // if core points are part of the original point cloud, we call the function below to get the normals of core points
-    //GetCoreNormals(g_M3C2Params.pCloud1->m_point3D, normals, g_M3C2Params.corepoints);
-    //g_M3C2Params.corepointsnomrals.clear();
-    //g_M3C2Params.corepointsnomrals = newnormals;
 
     vector <int> corepointindex(cplen, 0);
     for (int i = 0; i < cplen; i++)
@@ -220,6 +187,11 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
         start = std::clock(); // get current time
         // 10000 core points take 4.658s
         // 20000 core points takes 12.874s
+//#pragma omp parallel for schedule(static) \
+//        num_threads(8)
+//        for (int index = 0; index < corepointindex.size(); index++) {
+//            computeM3C2(index);
+//        }
         parallel_for_each(begin(corepointindex), end(corepointindex), [](int index) {
             computeM3C2(index);
             });

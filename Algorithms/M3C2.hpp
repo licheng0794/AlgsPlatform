@@ -12,8 +12,6 @@ void computeAlongAcross(Eigen::Vector3d invector, Eigen::Vector3d N, double& alo
 int GetRealNeighbours(vector <Eigen::Vector3d>neigh_candidates,
 	                                       Eigen::Vector3d corepoint, Eigen::Vector3d N, 
 	                                       double radius, double projDepth, vector<double>& dist);
-void GetCoreNormals(vector <Eigen::Vector3d>originalpoints, vector <Eigen::Vector3d>originalnormals, vector <Eigen::Vector3d>corepoints);
-int getIndex(vector<Eigen::Vector3d> v, Eigen::Vector3d K);
 
 template<typename T>
 T stdvariance(const std::vector<T>& vec);
