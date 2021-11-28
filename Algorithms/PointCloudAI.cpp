@@ -73,7 +73,15 @@ vector<Eigen::Vector3d> PointCloudAI::NormalEstimationRadius(double searchradius
 
     const KDTreeSearchParam& search_param = KDTreeSearchParamRadius(searchradius);
     pointcloud.EstimateNormals(search_param);
-
+    pointcloud.OrientNormalsToAlignWithDirection(); // align with Z oritention
+    // actually it is simple
+    /*const Eigen::Vector3d& orientation_reference = Eigen::Vector3d(0.0, 0.0, 1.0)
+    if (normal.norm() == 0.0) {
+        normal = orientation_reference;
+    }
+    else if (normal.dot(orientation_reference) < 0.0) {
+        normal *= -1.0;
+    }*/
     return pointcloud.normals_;
 }
 
