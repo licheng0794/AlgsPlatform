@@ -16,6 +16,7 @@
 #include <math.h>
 
 
+
 using namespace pdal;
 using namespace pdal::Dimension;
 using namespace std;
@@ -31,6 +32,9 @@ struct boundingbox {
 };
 
 vector<Eigen::Vector3d> ReadLas(const char* inputfile, vector<Eigen::Vector3d>& bbox);
+
+vector<Eigen::Vector3d> ReadLasPtSrc(const char* inputfile, vector<Eigen::Vector3d>& bbox, vector<int>& srcid);
+
 void SaveLas(const char* outputfile, vector<Eigen::Vector3d> point3D);
 
 bool SaveLasExtraDims(const char* outputfile, vector<Eigen::Vector3d> point3D,

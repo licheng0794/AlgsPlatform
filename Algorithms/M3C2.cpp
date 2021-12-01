@@ -1,24 +1,9 @@
 // @ author: Cheng Li
 
 # include "M3C2.hpp"
-# include <armadillo>
-#include <ppl.h>
-#include <math.h>
-#include <ctime>
-#include <string.h>
-#include <assert.h>
-#include <fstream>
-#include <iostream>
 
-using namespace arma;
-using namespace concurrency;
-
-# define MAX_OCTREE_LEVEL 14
+# define MAX_OCTREE_LEVEL 14 // set the maximum value in udstream if possible 
 # define IF_DEBUG false
-
-using namespace std;
-
-
 
 struct M3C2Params {
     vector<double> M3C2dists; // distances
@@ -82,9 +67,9 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
     g_M3C2Params.projScale = projScale;
     g_M3C2Params.projDepth = projDepth;
 
-    g_M3C2Params.normalScale = 0.315625;
-    g_M3C2Params.projScale = 0.315625;
-    g_M3C2Params.projDepth = 2.45;
+    //g_M3C2Params.normalScale = 0.315625;
+    //g_M3C2Params.projScale = 0.315625;
+    //g_M3C2Params.projDepth = 2.45;
     
     cout << "6. Reading the core points!" << endl;
     if (strcmp(incloud1, cpcloud)==0)
@@ -244,7 +229,8 @@ void computeM3C2(int index)
     }
 
     vector<double> projDist1; // the distances of points projected to the normal direction
-    int n1 = GetRealNeighbours(candidate, corepoint, N, g_M3C2Params.projScale / 2, g_M3C2Params.projDepth, projDist1);
+    // N is normal
+    int n1 = GetRealNeighbours(candidate, neigh_candidate_indices, corepoint, N, g_M3C2Params.projScale / 2, g_M3C2Params.projDepth, projDist1);
     
     if (n1 < g_M3C2Params.minneighbours)
     {
@@ -269,7 +255,7 @@ void computeM3C2(int index)
 
     vector<double> projDist2; // the distances of points projected to the normal direction
 
-    int n2 = GetRealNeighbours(candidate, corepoint, N, g_M3C2Params.projScale / 2, g_M3C2Params.projDepth, projDist2);
+    int n2 = GetRealNeighbours(candidate, neigh_candidate_indices, corepoint, N, g_M3C2Params.projScale / 2, g_M3C2Params.projDepth, projDist2);
 
     if (n2 < g_M3C2Params.minneighbours)
     {
@@ -313,12 +299,28 @@ void computeAlongAcross(Eigen::Vector3d invector, Eigen::Vector3d N, double &alo
     across = std::pow(alongvector.norm(), 2);
 }
 
-int GetRealNeighbours(vector <Eigen::Vector3d>candidates, Eigen::Vector3d corepoint, Eigen::Vector3d N, 
+/****************GetRealNeighbours******************************/
+/************************inputs**********************************
+vector <Eigen::Vector3d>&candidates: potential candidates
+vector <int>&candidate_indices: potential candidate indices
+Eigen::Vector3d corepoint: core point 
+Eigen::Vector3d N: the normal of the core point
+double radius: cylinder raidus
+double projDepth: cylinder depth
+vector<double> &dist: the projection distance of each real neighbour
+
+/************************outputs**********************************
+vector <Eigen::Vector3d>&candidates will be updated
+vector <int>&candidate_indices will be updated
+vector<double> &dist will be updated
+the number of real neighbours will be returned
+******************************************************************/
+
+int GetRealNeighbours(vector <Eigen::Vector3d>&candidates, vector <int>&candidate_indices, Eigen::Vector3d corepoint, Eigen::Vector3d N,
                                            double radius, double projDepth, vector<double> &dist)
 {
-
     vector <Eigen::Vector3d> RealNeighbours;
-
+    vector <int> real_candidate_indices;
     vector<double> along(candidates.size(), 0);
     vector<double> across(candidates.size(), 0);
     vector<int> candindex(candidates.size(), 0);
@@ -332,7 +334,6 @@ int GetRealNeighbours(vector <Eigen::Vector3d>candidates, Eigen::Vector3d corepo
     {
         for (int i = 0; i < candidates.size(); i++)
         {
-            
             computeAlongAcross(candidates[i] - corepoint, N, alongval, acrossval);
             along[i] = alongval;
             across[i] = acrossval;
@@ -355,16 +356,21 @@ int GetRealNeighbours(vector <Eigen::Vector3d>candidates, Eigen::Vector3d corepo
     }
 
     // make sure along <= projDepth and across <= radius*radius
-    for (int i = 0; i < candidates.size(); i++)
+    for (int i = 0; i < along.size(); i++)
     {
         if (std::abs(along[i]) <= projDepth && across[i] <= radius * radius)
         {
             RealNeighbours.push_back(candidates[i]);
+            real_candidate_indices.push_back(candidate_indices[i]);
+            //candidate_indices.erase()
             dist.push_back(along[i]);
         }
     }
 
-    return RealNeighbours.size();
+    candidate_indices = real_candidate_indices;
+    candidates = RealNeighbours;
+
+    return dist.size();
  
 }
 
@@ -676,11 +682,19 @@ void ParamEstimate(PointCloudAI &pCloud1, PointCloudAI &pCloud2, double& bestNor
         std::sort(pop1.begin(), pop1.end());
         std::sort(pop2.begin(), pop2.end());
 
-        if (pop1[(int)(NoPoints * 0.03)] >= 30 && pop2[(int)(NoPoints * 0.03)] >= 30)
+        if (pop1[(int)(NoPoints * 0.03)] >= 4 && pop2[(int)(NoPoints * 0.03)] >= 4)
         {
             findProjScale = true;
             bestProjScale = projscale;
         }
+
+        if (projscale > cellsize[7])
+        {
+            cout << "   the searching size is over level 7!" << endl;
+            findProjScale = true;
+            bestProjScale = cellsize[7];
+        }
+
         projscale += startsearchscale;
 
     }

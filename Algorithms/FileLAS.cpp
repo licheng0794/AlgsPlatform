@@ -51,6 +51,67 @@ vector<Eigen::Vector3d> ReadLas(const char* inputfile, vector<Eigen::Vector3d>& 
 	return point3D; // should set different return values
 }
 
+// read the las file with point source id
+vector<Eigen::Vector3d> ReadLasPtSrc(const char* inputfile, vector<Eigen::Vector3d>& bbox, vector<int>& srcid)
+{
+	pdal::Option las_opt("filename", inputfile);
+	pdal::Options las_opts;
+	las_opts.add(las_opt);
+
+	pdal::PointTable table;
+	pdal::LasReader las_reader;
+	las_reader.setOptions(las_opts);
+	las_reader.prepare(table);
+
+	pdal::PointViewSet point_view_set = las_reader.execute(table);
+	pdal::PointViewPtr point_view = *point_view_set.begin();
+	pdal::Dimension::IdList dims = point_view->dims();
+	pdal::LasHeader las_header = las_reader.header();
+
+	unsigned int PointCount = las_header.pointCount();
+
+	double scale_x = las_header.scaleX();
+	double scale_y = las_header.scaleY();
+	double scale_z = las_header.scaleZ();
+	double offset_x = las_header.offsetX();
+	double offset_y = las_header.offsetY();
+	double offset_z = las_header.offsetZ();
+
+	bbox.at(0) = Eigen::Vector3d(las_header.minX(), las_header.minY(), las_header.minZ());
+	bbox.at(1) = Eigen::Vector3d(las_header.maxX(), las_header.maxY(), las_header.maxZ());
+
+	vector<Eigen::Vector3d> point3D(PointCount);
+
+	Dimension::Id ptsrcid = table.layout()->findDim("PointSourceId");
+
+	//pdal::EXPECT_EQ(table.layout()->dimType(ptsrcid), Dimension::Type::Unsigned16);
+
+	unsigned int i = 0;
+	for (pdal::PointId idx = 0, i = 0; (idx < point_view->size()) & (i < PointCount); ++idx, ++i)
+	{
+
+		double x = point_view->getFieldAs<double>(Id::X, idx);
+		double y = point_view->getFieldAs<double>(Id::Y, idx);
+		double z = point_view->getFieldAs<double>(Id::Z, idx);
+
+		int id = point_view->getFieldAs<int>(ptsrcid, idx);
+
+		point3D[i][0] = x;
+		point3D[i][1] = y;
+		point3D[i][2] = z;
+
+		srcid.push_back(id);
+	}
+
+	
+
+	//cout << "offset_x = " << offset_x;
+	//cout << "offset_y = " << offset_y;
+	//cout << "offset_z = " << offset_z << endl;
+	return point3D; // should set different return values
+}
+
+
 void SaveLas(const char* outputfile, vector<Eigen::Vector3d> point3D)
 {
 	Options las_opt;
