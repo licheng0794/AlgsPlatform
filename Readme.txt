@@ -18,7 +18,12 @@ c. download armadillo-10.7.3 (https://fossies.org/linux/misc/armadillo-10.7.3.ta
 3. Open sln to build the project. It only works at 'Release' version. 
    
 
-Notes:
-1. if the message 'file not exists' comes out, please change to the name and path of your files in Main.cpp.
-2. normal estimation should be checked carefully when integrated into udstream. The current normal estimation can only used to 
-   estimate the normals of the whole point cloud.
+Examples:
+1. CSF for ground filtering. An example is:
+ - CSF ../../data/CSFutm.laz
+2. VolumeCal for the volume calculation between two time epochs. An example is:
+ - VolumeCal ../../data/F5_March_2019_1cm_crop_crop_small_small.las ../../data/F5_October_2019_1cm_crop_crop_register_small_small.las 0.1
+3. M3C2 for change detection between two time epochs. An example is: 
+ - M3C2 ../../data/F5_March_2019_1cm_crop_crop_small_small.las ../../data/F5_October_2019_1cm_crop_crop_register_small_small.las M3C2result.las
+3. M3C2-EP for change detection between two time epochs. An example is: 
+ - M3C2EP ../../data/2017_652700_5189300_gnd.laz ../../data/2018A_652700_5189300_gnd.laz M3C2EPresult.las
