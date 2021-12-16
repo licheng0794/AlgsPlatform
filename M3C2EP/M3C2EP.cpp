@@ -189,11 +189,11 @@ void M3C2EP(const char* incloud1, const char* incloud2, const char* cpcloud, con
 
     for (auto it = point3D.begin(); it != point3D.end(); ++it)
     {
+        
         Eigen::Vector3d diff =  (*it) - g_M3C2EPparams.referPoint;
         Eigen::MatrixXd diffconvert;
         // covert vector3d to matrixXd
-        diffconvert = Eigen::MatrixXd::Map(diff.data(),1, diff.size());
-      
+        diffconvert = Eigen::MatrixXd::Map(diff.data(),1, diff.size());      
 
         Eigen::MatrixXd multipval = diffconvert * g_M3C2EPparams.TrfMat.block<3, 3>(0, 0);
         // convert Matrix to vector3d
@@ -226,16 +226,16 @@ void M3C2EP(const char* incloud1, const char* incloud2, const char* cpcloud, con
     double projDepth = 0;
 
     cout << "5. Estimating proper parameters ..." << endl;
-    //ParamEstimate(*g_M3C2EPparams.pCloud1, *g_M3C2EPparams.pCloud2, normalScale, projScale, projDepth);
+    ParamEstimate(*g_M3C2EPparams.pCloud1, *g_M3C2EPparams.pCloud2, normalScale, projScale, projDepth);
 
-    //g_M3C2Params.corepoints = g_M3C2Params.pCloud1->m_point3D; // temporary
-    /*g_M3C2EPparams.normalScale = normalScale;
+    //g_M3C2EPparams.corepoints = g_M3C2EPparams.pCloud1->m_point3D; // temporary
+    g_M3C2EPparams.normalScale = normalScale;
     g_M3C2EPparams.projScale = projScale;
-    g_M3C2EPparams.projDepth = projDepth;*/
+    g_M3C2EPparams.projDepth = projDepth;
 
-    g_M3C2EPparams.normalScale = 0.828492;
+    /*g_M3C2EPparams.normalScale = 0.828492;
     g_M3C2EPparams.projScale = 0.207123;
-    g_M3C2EPparams.projDepth = 7.45075;
+    g_M3C2EPparams.projDepth = 7.45075;*/
 
     cout << "6. Reading the core points!" << endl;
     if (strcmp(incloud1, cpcloud) == 0)
