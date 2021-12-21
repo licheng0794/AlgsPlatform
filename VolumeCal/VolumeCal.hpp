@@ -30,6 +30,8 @@ struct VolumeResults
 
 
 enum class ProjectionType { AVERAGE, MAXIMUM, MINIMUM};
-
-void VolumeDiffCal(const char* groundfile, const char* ceilfile, double gridstep, int projtype=0);
+void Volcal(const char* groundfile, const char* ceilfile);
+void VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d> ceilpoints, 
+	Eigen::Vector3d miniCorner, Eigen::Vector3d maxiCorner,
+	double gridstep, VolumeResults& result, double &ratio, int projtype=0);
 

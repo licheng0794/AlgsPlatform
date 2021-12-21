@@ -7,11 +7,11 @@
 int main(int argc, char* argv[])
 {
 
-    if (argc != 4)
+    if (argc != 3)
     {
-        cout << "the number of the input parameters is not 3!" << endl;
-        cout << "the correct form is 'VolumeCal inputcloud gridstep'" << endl;
-        cout << "The gridstep 0.1 or 0.01 is recommended!" << endl;
+        cout << "the number of the input parameters is not 2!" << endl;
+        cout << "the correct form is 'VolumeCal referenceCloud targetCloud'" << endl;
+        
         return 0;
     }
 
@@ -19,12 +19,11 @@ int main(int argc, char* argv[])
 
     const char* inputfile1 = argv[1];
     const char* inputfile2 = argv[2];
-    double gridStep = std::atof(argv[3]);
     double volDiff = 0;
     VolumeResults result;
     int projType = 0;
 
-    VolumeDiffCal(inputfile1, inputfile2, gridStep, projType);
+    Volcal(inputfile1, inputfile2);
 
     system("pause");
 }

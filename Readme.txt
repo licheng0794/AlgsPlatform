@@ -22,7 +22,7 @@ Examples:
 1. CSF for ground filtering. An example is:
  - CSF ../../data/CSFutm.laz
 2. VolumeCal for the volume calculation between two time epochs. An example is:
- - VolumeCal ../../data/F5_March_2019_1cm_crop_crop_small_small.las ../../data/F5_October_2019_1cm_crop_crop_register_small_small.las 0.1
+ - VolumeCal ../../data/F5_March_2019_1cm_crop_crop_small_small.las ../../data/F5_October_2019_1cm_crop_crop_register_small_small.las
 3. M3C2 for change detection between two time epochs. An example is: 
  - M3C2 ../../data/F5_March_2019_1cm_crop_crop_small_small.las ../../data/F5_October_2019_1cm_crop_crop_register_small_small.las M3C2result.las
 3. M3C2-EP for change detection between two time epochs. An example is: 

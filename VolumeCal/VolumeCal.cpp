@@ -1,15 +1,73 @@
 # include "VolumeCal.hpp"
 
-void VolumeDiffCal(const char* groundfile, const char* ceilfile, double gridStep, int projtype/*=0*/)
+void Volcal(const char* groundfile, const char* ceilfile)
 {
+	// read files
+	vector<Eigen::Vector3d> groundbbox(2);
+	vector<Eigen::Vector3d> groundpoints = ReadLas(groundfile, groundbbox);
+
+	vector<Eigen::Vector3d> ceilbbox(2);
+	vector<Eigen::Vector3d> ceilpoints = ReadLas(ceilfile, ceilbbox);
+
+	// 1. find the minicorner  where we start to grid point cloud
+	Eigen::Vector3d miniCorner;
+	miniCorner[0] = std::min(groundbbox[0][0], ceilbbox[0][0]);
+	miniCorner[1] = std::min(groundbbox[0][1], ceilbbox[0][1]);
+	miniCorner[2] = std::min(groundbbox[0][2], ceilbbox[0][2]);
+
+	Eigen::Vector3d maxiCorner;
+	maxiCorner[0] = std::max(groundbbox[1][0], ceilbbox[1][0]);
+	maxiCorner[1] = std::max(groundbbox[1][1], ceilbbox[1][1]);
+	maxiCorner[2] = std::max(groundbbox[1][2], ceilbbox[1][2]);
+	double gridStep = 0.01;
 	VolumeResults result;
+	double iniratio;
+	VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, gridStep, result, iniratio);
+
+	if (iniratio >= 7)
+	{
+		double ratio = iniratio;
+		while (ratio >= 7)
+		{
+			gridStep = gridStep / 2;
+			VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, gridStep, result, ratio);
+		}
+	}
+	else
+	{
+		double ratio = iniratio;
+		while (ratio < 7)
+		{
+			gridStep = gridStep * 2;
+			VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, gridStep, result, ratio);
+		}
+	}
+
+	cout << " the final girdstep is " << gridStep << endl;
+
+	cout << "---------------Volume Report Info---------------" << endl;
+	cout << " the volume difference is " << result.VolumeDiff << endl;
+	cout << " the added volume is " << result.addedVolume << endl;
+	cout << " the removed volume is " << result.removedVolume << endl;
+	cout << " the surface is " << result.Surface << endl;
+	cout << " the matching percentage between ground and ceil is " << result.matchPercentage << "%" << endl;
+	cout << " the non-matching percentage ground is " << result.nonmatchGroundPercentage << "%" << endl;
+	cout << " the non-matching percentage ceil is " << result.nonmatchCeilPercentage << "%" << endl;
+
+}
+
+
+void VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d> ceilpoints,
+	Eigen::Vector3d miniCorner, Eigen::Vector3d maxiCorner,
+	double gridStep, VolumeResults &result, double &ratio,  int projtype/*=0*/)
+{
 
 	if (projtype != 0 && projtype != 1 && projtype != 2)
 	{
 		cout << "the last parameter should be 0 or 1 or 2" << endl;
-		cout << "  -0 : use the average height for each cell!" << endl;
-		cout << "  -1 : use the minimum height for each cell!" << endl;
-		cout << "  -2 : use the maximum height for each cell!" << endl;
+		cout << "  0 : use the average height for each cell!" << endl;
+		cout << "  1 : use the minimum height for each cell!" << endl;
+		cout << "  2 : use the maximum height for each cell!" << endl;
 		return;
 	}
 
@@ -31,30 +89,12 @@ void VolumeDiffCal(const char* groundfile, const char* ceilfile, double gridStep
 	}
 	
 
-	// read files
-	vector<Eigen::Vector3d> groundbbox(2);
-	vector<Eigen::Vector3d> groundpoints = ReadLas(groundfile, groundbbox);
-
-	vector<Eigen::Vector3d> ceilbbox(2);
-	vector<Eigen::Vector3d> ceilpoints = ReadLas(ceilfile, ceilbbox);
-
-	// 1. find the minicorner  where we start to grid point cloud
-	Eigen::Vector3d miniCorner;
-	miniCorner[0] = std::min(groundbbox[0][0], ceilbbox[0][0]);
-	miniCorner[1] = std::min(groundbbox[0][1], ceilbbox[0][1]);
-	miniCorner[2] = std::min(groundbbox[0][2], ceilbbox[0][2]);
-
-	Eigen::Vector3d maxiCorner;
-	maxiCorner[0] = std::max(groundbbox[1][0], ceilbbox[1][0]);
-	maxiCorner[1] = std::max(groundbbox[1][1], ceilbbox[1][1]);
-	maxiCorner[2] = std::max(groundbbox[1][2], ceilbbox[1][2]);
-
 	// 2. calculate the grid size for minicorner and maxicorner: gridWidth and gridHeight
 	// we only consider X and Y direction
 	unsigned int gridWidth = 1 + static_cast<unsigned>((maxiCorner[0] - miniCorner[0]) / gridStep + 0.5);
 	unsigned int gridHeight = 1 + static_cast<unsigned>((maxiCorner[1] - miniCorner[1]) / gridStep + 0.5);
 	
-	cout << " the grid size is " << gridHeight << "*" << gridWidth << endl;
+	//cout << " the grid size is " << gridHeight << "*" << gridWidth << endl;
 
 	Cell initcell = { 0, 0, 0, 1.0e+8, -1.0e+8, 0, 0 };
 
@@ -93,7 +133,7 @@ void VolumeDiffCal(const char* groundfile, const char* ceilfile, double gridStep
 		int j = static_cast<int>(dist[1] / gridStep + 0.5);
 
 		if (i < 0 || i >= static_cast<int>(gridWidth)
-			|| j < 0 || j >= static_cast<int>(gridHeight))
+			|| j < 0 || j >= static_cast<int>(gridHeight)) 
 			continue;
 		Cell& ncell = groundCells[j][i];
 		// give this point to the vector
@@ -168,6 +208,7 @@ void VolumeDiffCal(const char* groundfile, const char* ceilfile, double gridStep
 	double removedvolume = 0;
 	double surface = 0;
 
+
 	for (int j = 0; j < gridHeight; j++)
 	{
 		for (int i = 0; i < gridWidth; i++)
@@ -203,8 +244,6 @@ void VolumeDiffCal(const char* groundfile, const char* ceilfile, double gridStep
 
 				}
 				MergeCells[j][i].avgHeight = hdiff;
-
-
 			}
 			else
 			{
@@ -240,31 +279,34 @@ void VolumeDiffCal(const char* groundfile, const char* ceilfile, double gridStep
 	{
 		for (unsigned i = 1; i < gridWidth - 1; ++i)
 		{
+			Cell curCell = MergeCells[j][i];
 
-			for (unsigned k = j - 1; k <= j + 1; ++k)
+			if (curCell.avgHeight == curCell.avgHeight)
 			{
-				for (unsigned l = i - 1; l <= i + 1; ++l)
+				for (unsigned k = j - 1; k <= j + 1; ++k)
 				{
-					if (k != j || l != i)
+					for (unsigned l = i - 1; l <= i + 1; ++l)
 					{
-						Cell& otherCell = MergeCells[k][l];
-						if (std::isfinite(otherCell.avgHeight))
+						if (k != j || l != i)
 						{
-							++validNeighborsCount;
+							Cell otherCell = MergeCells[k][l];
+							if (std::isfinite(otherCell.avgHeight))
+							{
+								++validNeighborsCount;
+							}
 						}
 					}
 				}
+				++count;
 			}
-			++count;
+
+			
 		}
 	}
 
-	if (static_cast<double>(validNeighborsCount) / count < 7.0)
-	{
-		cout << " the gridstep is so small, please increase the gridstep!" << endl;
-		return;
-	}
 
+	//cout << "the ratio is: " << 1.0*validNeighborsCount / count << endl;
+	ratio = static_cast<double>(validNeighborsCount) / count;
 
 	double area = gridStep * gridStep;
 	
@@ -275,14 +317,6 @@ void VolumeDiffCal(const char* groundfile, const char* ceilfile, double gridStep
 	result.matchPercentage = static_cast<float>(matchcells * 100) / cellCount;
 	result.nonmatchGroundPercentage = static_cast<float>(nonmatchcells_ground *100)/ cellCount;
 	result.nonmatchCeilPercentage = static_cast<float>(nonmatchcells_ceil * 100) / cellCount;
-
-	cout << "---------------Volume Report Info---------------" << endl;
-	cout << " the volume is " << result.VolumeDiff << endl;
-	cout << " the added volume is " << result.addedVolume << endl;
-	cout << " the removed volume is " << result.removedVolume << endl;
-	cout << " the surface is " << result.Surface << endl;
-	cout << " the matching percentage between ground and ceil is " << result.matchPercentage << "%" <<endl;
-	cout << " the non-matching percentage ground is " << result.nonmatchGroundPercentage << "%" << endl;
-	cout << " the non-matching percentage ceil is " << result.nonmatchCeilPercentage << "%" << endl;
 	
+	return;
 }
