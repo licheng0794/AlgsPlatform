@@ -281,7 +281,7 @@ void VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d>
 		{
 			Cell curCell = MergeCells[j][i];
 
-			if (curCell.avgHeight == curCell.avgHeight)
+			if (std::isfinite(curCell.avgHeight))
 			{
 				for (unsigned k = j - 1; k <= j + 1; ++k)
 				{
