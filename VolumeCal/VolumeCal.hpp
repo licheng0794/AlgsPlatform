@@ -7,7 +7,9 @@ using namespace std;
 
 // the cell info
 struct Cell {
-	int Npoints; // the number of points
+	int Npoints; // the number of points in the cell
+	bool Binterpolate; // interpolate or not ?
+	double Height;
 	double avgHeight; // the average height
 	double stdHeight; // the standard dev of heights
 	double minHeight; // the minimum height
@@ -30,8 +32,10 @@ struct VolumeResults
 
 
 enum class ProjectionType { AVERAGE, MAXIMUM, MINIMUM};
+enum class FillEmptyStrategy {EMPTY, INTERPOLATE};
 void Volcal(const char* groundfile, const char* ceilfile);
 void VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d> ceilpoints, 
 	Eigen::Vector3d miniCorner, Eigen::Vector3d maxiCorner,
-	double gridstep, VolumeResults& result, double &ratio, int projtype=0);
+	double gridstep, VolumeResults& result, double &ratio, 
+	FillEmptyStrategy fillstrategy = FillEmptyStrategy::EMPTY, int projtype=0);
 
