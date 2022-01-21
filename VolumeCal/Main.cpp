@@ -1,29 +1,41 @@
 #include <iostream>
 #include "VolumeCal.hpp"
 
+
 // @ author: Cheng Li 
 
 
 int main(int argc, char* argv[])
 {
 
-    if (argc != 3)
+    if ((argc!=3) && (argc !=2))
     {
-        cout << "the number of the input parameters is not 2!" << endl;
-        cout << "the correct form is 'VolumeCal referenceCloud targetCloud'" << endl;
+        cout << "the correct input format is 'VolumeCal file1 file2' or ''VolumeCal file1'" << endl;
         
         return 0;
     }
 
-    cout << "the volumemetric change algorithm is running!" << endl;
+    if (argc == 3)
+    {
+        cout << "the volumemetric change algorithm is running!" << endl;
+        const char* inputfile1 = argv[1];
+        const char* inputfile2 = argv[2];
+        Volcal(inputfile1, inputfile2);
 
-    const char* inputfile1 = argv[1];
-    const char* inputfile2 = argv[2];
-    double volDiff = 0;
-    VolumeResults result;
-    int projType = 0;
+        system("pause");
+    }
 
-    Volcal(inputfile1, inputfile2);
+    if (argc == 2)
+    {
+        cout << "the single volume calculation is running!" << endl;
+        const char* inputfile1 = argv[1];
+        Volcal(inputfile1);
 
-    system("pause");
+        system("pause");
+    }
+
+
+   
+
+   
 }

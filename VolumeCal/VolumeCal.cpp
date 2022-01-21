@@ -8,6 +8,12 @@ bool is_file_exist(const char* fileName)
 	return infile.good();
 }
 
+void Volcal(const char* pcfile)
+{
+	return;
+}
+
+
 void Volcal(const char* groundfile, const char* ceilfile)
 {
 	if (!is_file_exist(groundfile))
@@ -69,8 +75,8 @@ void Volcal(const char* groundfile, const char* ceilfile)
 	
 	double neighbourratio = 0;
 	//finalgridStep = 0.1;
-	/*VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, finalgridStep, result,
-		          neighbourratio, FillEmptyStrategy::INTERPOLATE)*/;
+	VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, finalgridStep, result,
+		          neighbourratio, FillEmptyStrategy::INTERPOLATE);
 	/*VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, finalgridStep, result,
 		neighbourratio);*/
 
