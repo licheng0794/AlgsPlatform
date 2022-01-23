@@ -8,12 +8,18 @@ bool is_file_exist(const char* fileName)
 	return infile.good();
 }
 
-void Volcal(const char* pcfile)
+// automatical volume calculation for a single point cloud
+void Volcal(const char* volfile)
 {
+	if (!is_file_exist(volfile))
+	{
+		cout << "the input file not found!" << endl;
+		return;
+	}
 	return;
 }
 
-
+// automatical volume change calculation for two scans
 void Volcal(const char* groundfile, const char* ceilfile)
 {
 	if (!is_file_exist(groundfile))
@@ -82,6 +88,60 @@ void Volcal(const char* groundfile, const char* ceilfile)
 
 
 	cout << " the final girdstep is " << finalgridStep << endl;
+
+	cout << "---------------Volume Info---------------" << endl;
+	cout << " the volume difference is " << result.VolumeDiff << endl;
+	cout << " the added volume is " << result.addedVolume << endl;
+	cout << " the removed volume is " << result.removedVolume << endl;
+	cout << " the surface is " << result.Surface << endl;
+	cout << " the average number of neighbours for cells is " << neighbourratio << endl;
+	cout << " the matching percentage between ground and ceil is " << result.matchPercentage << "%" << endl;
+	cout << " the non-matching percentage ground is " << result.nonmatchGroundPercentage << "%" << endl;
+	cout << " the non-matching percentage ceil is " << result.nonmatchCeilPercentage << "%" << endl;
+
+}
+
+
+// volume change calculation for two scans with a given gridstep
+void Volcal(const char* groundfile, const char* ceilfile, double gridstep)
+{
+	if (!is_file_exist(groundfile))
+	{
+		cout << "the first input file not found!" << endl;
+		return;
+	}
+
+	if (!is_file_exist(ceilfile))
+	{
+		cout << "the second input file not found!" << endl;
+		return;
+	}
+
+	// read files
+	vector<Eigen::Vector3d> groundbbox(2);
+	vector<Eigen::Vector3d> groundpoints = ReadLas(groundfile, groundbbox);
+
+	vector<Eigen::Vector3d> ceilbbox(2);
+	vector<Eigen::Vector3d> ceilpoints = ReadLas(ceilfile, ceilbbox);
+
+	// 1. find the minicorner  where we start to grid point cloud
+	Eigen::Vector3d miniCorner;
+	miniCorner[0] = std::min(groundbbox[0][0], ceilbbox[0][0]);
+	miniCorner[1] = std::min(groundbbox[0][1], ceilbbox[0][1]);
+	miniCorner[2] = std::min(groundbbox[0][2], ceilbbox[0][2]);
+
+	Eigen::Vector3d maxiCorner;
+	maxiCorner[0] = std::max(groundbbox[1][0], ceilbbox[1][0]);
+	maxiCorner[1] = std::max(groundbbox[1][1], ceilbbox[1][1]);
+	maxiCorner[2] = std::max(groundbbox[1][2], ceilbbox[1][2]);
+	
+	double neighbourratio = 0;
+	double finalgridStep = 0.1;
+	VolumeResults result;
+	VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, finalgridStep, result,
+		neighbourratio, FillEmptyStrategy::INTERPOLATE);
+
+	cout << " the given girdstep is " << finalgridStep << endl;
 
 	cout << "---------------Volume Info---------------" << endl;
 	cout << " the volume difference is " << result.VolumeDiff << endl;

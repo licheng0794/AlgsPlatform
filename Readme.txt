@@ -21,8 +21,11 @@ c. download armadillo-10.7.3 (https://fossies.org/linux/misc/armadillo-10.7.3.ta
 Examples:
 1. CSF for ground filtering. An example is:
  - CSF ../../data/CSFutm.laz
-2. VolumeCal for the volume calculation between two time epochs. An example is:
+2. VolumeCal for the volume calculation between two time epochs. 
+   An example with the automatic gridstep is:
  - VolumeCal ../../data/F5_March_2019_1cm_crop_crop_small_small.las ../../data/F5_October_2019_1cm_crop_crop_register_small_small.las
+   An example with a given gridstep is:
+ - VolumeCal ../../data/F5_March_2019_1cm_crop_crop_small_small.las ../../data/F5_October_2019_1cm_crop_crop_register_small_small.las 0.1
 3. M3C2 for change detection between two time epochs. An example is: 
  - M3C2 ../../data/F5_March_2019_1cm_crop_crop_small_small.las ../../data/F5_October_2019_1cm_crop_crop_register_small_small.las M3C2result.las
 3. M3C2-EP for change detection between two time epochs. An example is: 

@@ -33,8 +33,9 @@ struct VolumeResults
 
 enum class ProjectionType { AVERAGE, MAXIMUM, MINIMUM};
 enum class FillEmptyStrategy {EMPTY, INTERPOLATE};
+void Volcal(const char* volfile);
 void Volcal(const char* groundfile, const char* ceilfile);
-void Volcal(const char* pcfile);
+void Volcal(const char* groundfile, const char* ceilfile, double gridstep);
 void VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d> ceilpoints, 
 	Eigen::Vector3d miniCorner, Eigen::Vector3d maxiCorner,
 	double gridstep, VolumeResults& result, double &ratio, 
