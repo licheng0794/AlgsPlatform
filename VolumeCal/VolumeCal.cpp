@@ -136,12 +136,12 @@ void Volcal(const char* groundfile, const char* ceilfile, double gridstep)
 	maxiCorner[2] = std::max(groundbbox[1][2], ceilbbox[1][2]);
 	
 	double neighbourratio = 0;
-	double finalgridStep = 0.1;
+
 	VolumeResults result;
-	VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, finalgridStep, result,
+	VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, gridstep, result,
 		neighbourratio, FillEmptyStrategy::INTERPOLATE);
 
-	cout << " the given girdstep is " << finalgridStep << endl;
+	cout << " the given girdstep is " << gridstep << endl;
 
 	cout << "---------------Volume Info---------------" << endl;
 	cout << " the volume difference is " << result.VolumeDiff << endl;
