@@ -80,14 +80,11 @@ void Volcal(const char* groundfile, const char* ceilfile)
 	}
 	
 	double neighbourratio = 0;
-	//finalgridStep = 0.1;
+
 	VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, finalgridStep, result,
 		          neighbourratio, FillEmptyStrategy::INTERPOLATE);
-	/*VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, finalgridStep, result,
-		neighbourratio);*/
 
-
-	cout << " the final girdstep is " << finalgridStep << endl;
+	cout << " the optimal girdstep is " << finalgridStep << endl;
 
 	cout << "---------------Volume Info---------------" << endl;
 	cout << " the volume difference is " << result.VolumeDiff << endl;
@@ -138,28 +135,29 @@ void Volcal(const char* groundfile, const char* ceilfile, double gridstep)
 	double neighbourratio = 0;
 
 	VolumeResults result;
-	VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, gridstep, result,
-		neighbourratio, FillEmptyStrategy::INTERPOLATE);
+	if (VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, gridstep, result,
+		neighbourratio, FillEmptyStrategy::EMPTY, true))
+	{
+		cout << " the given girdstep is " << gridstep << endl;
 
-	cout << " the given girdstep is " << gridstep << endl;
-
-	cout << "---------------Volume Info---------------" << endl;
-	cout << " the volume difference is " << result.VolumeDiff << endl;
-	cout << " the added volume is " << result.addedVolume << endl;
-	cout << " the removed volume is " << result.removedVolume << endl;
-	cout << " the surface is " << result.Surface << endl;
-	cout << " the average number of neighbours for cells is " << neighbourratio << endl;
-	cout << " the matching percentage between ground and ceil is " << result.matchPercentage << "%" << endl;
-	cout << " the non-matching percentage ground is " << result.nonmatchGroundPercentage << "%" << endl;
-	cout << " the non-matching percentage ceil is " << result.nonmatchCeilPercentage << "%" << endl;
+		cout << "---------------Volume Info---------------" << endl;
+		cout << " the volume difference is " << result.VolumeDiff << endl;
+		cout << " the added volume is " << result.addedVolume << endl;
+		cout << " the removed volume is " << result.removedVolume << endl;
+		cout << " the surface is " << result.Surface << endl;
+		cout << " the average number of neighbours for cells is " << neighbourratio << endl;
+		cout << " the matching percentage between ground and ceil is " << result.matchPercentage << "%" << endl;
+		cout << " the non-matching percentage ground is " << result.nonmatchGroundPercentage << "%" << endl;
+		cout << " the non-matching percentage ceil is " << result.nonmatchCeilPercentage << "%" << endl;
+	}
 
 }
 
 
-void VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d> ceilpoints,
+bool VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d> ceilpoints,
 	Eigen::Vector3d miniCorner, Eigen::Vector3d maxiCorner,
 	double gridStep, VolumeResults &result, double &ratio, 
-	FillEmptyStrategy fillstrategy, int projtype/*=0*/)
+	FillEmptyStrategy fillstrategy, bool fixedgrid/*false*/, int projtype/*=0*/)
 {
 
 	if (projtype != 0 && projtype != 1 && projtype != 2)
@@ -168,7 +166,7 @@ void VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d>
 		cout << "  0 : use the average height for each cell!" << endl; // default 
 		cout << "  1 : use the minimum height for each cell!" << endl;
 		cout << "  2 : use the maximum height for each cell!" << endl;
-		return;
+		return false;
 	}
 
 	ProjectionType projectiontype;
@@ -320,8 +318,10 @@ void VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d>
 			switch (projectiontype)
 			{
 			case ProjectionType::AVERAGE:
-				cCell.Height = cCell.Height / cCell.Npoints;
-				gCell.Height = gCell.Height / gCell.Npoints;
+				if (cCell.Npoints !=0)
+					cCell.Height = cCell.Height / cCell.Npoints;
+				if (gCell.Npoints !=0)
+					gCell.Height = gCell.Height / gCell.Npoints;
 				break;
 
 			case ProjectionType::MINIMUM:
@@ -411,7 +411,19 @@ void VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d>
 
 		}
 	}
-	// interpolate. It may cause the error of the edge. Only used for the final volume calculation 
+
+	if (fixedgrid) // using a fixed gridstep
+	{
+		ratio = static_cast<double>(validNeighborsCount) / count;
+		if (ratio < 7.0)
+		{
+			cout << "the cells are sparse. Please increase the grid step!" << endl;
+			return false;
+		}
+	}
+
+	// interpolate. It may cause the error in the edge. Only used for the final volume calculation 
+
 	if (fillstrategy == FillEmptyStrategy::INTERPOLATE)
 	{
 		// reset all parameters
@@ -425,6 +437,7 @@ void VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d>
 		removedvolume = 0;
 		surface = 0;
 
+		
 
 		for (unsigned j = 1; j < gridHeight - 1; ++j)
 		{
@@ -545,12 +558,21 @@ void VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d>
 						}
 					}
 					else { // both Npoints==0
+						++cellCount;
 						if (gCell.Binterpolate && cCell.Binterpolate)
 						{
 							hdiff = cCell.Height - gCell.Height;
 							++matchcells;
 							volume += hdiff;
 							surface += 1.0;
+						}
+						else if (gCell.Binterpolate)
+						{
+							++nonmatchcells_ceil;
+						}
+						else
+						{
+							++nonmatchcells_ground;
 						}
 					}
 					
@@ -580,5 +602,7 @@ void VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d>
 	result.nonmatchGroundPercentage = static_cast<float>(nonmatchcells_ground *100)/ cellCount;
 	result.nonmatchCeilPercentage = static_cast<float>(nonmatchcells_ceil * 100) / cellCount;
 	
-	return;
+	return true;
 }
+
+
