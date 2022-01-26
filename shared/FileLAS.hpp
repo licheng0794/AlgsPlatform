@@ -39,3 +39,5 @@ void SaveLas(const char* outputfile, vector<Eigen::Vector3d> point3D);
 
 bool SaveLasExtraDims(const char* outputfile, vector<Eigen::Vector3d> point3D,
 	vector<double> val1, vector<double> val2, vector<double> val3);
+
+bool is_file_exist(const char* fileName);

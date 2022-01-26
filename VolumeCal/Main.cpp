@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
 
     if (argc == 3)
     {
-        cout << "the volumemetric change algorithm with the automatical gridstep is running!" << endl;
+        cout << "the volumemetric change algorithm with the optimal gridstep is running!" << endl;
         const char* inputfile1 = argv[1];
         const char* inputfile2 = argv[2];
         Volcal(inputfile1, inputfile2);

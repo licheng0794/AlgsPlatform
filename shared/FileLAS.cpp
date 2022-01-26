@@ -224,4 +224,9 @@ bool SaveLasExtraDims(const char* outputfile, vector<Eigen::Vector3d> point3D,
 	return true;
 }
 
+bool is_file_exist(const char* fileName)
+{
+	std::ifstream infile(fileName);
+	return infile.good();
+}
 

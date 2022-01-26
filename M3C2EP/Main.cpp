@@ -11,7 +11,7 @@
 
 using namespace concurrency;
 
-int main(int argc, char* argv[])
+void main(int argc, char* argv[])
 {
     //const char* inputfile = "D:/work/Canlvl325_01_Oct2020/test.las";
     //const char* inputfile1 = //"D:/work/Canlvl325_01_Oct2020/Canlvl325_01_13Jan2021.las";
@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
     {
         cout << "the number of the input parameters is not 3!" << endl;
         cout << "the correct form is 'M3C2EP referencecloud targetcloud resultfile'" << endl;
-        return 0;
+        return;
     }
 
     cout << "The change detection algorithm M3C2-EP is runnning" << endl;
@@ -73,6 +73,18 @@ int main(int argc, char* argv[])
     const char* corepointfile = argv[1];
     const char* resultfile = argv[3];
    
+    if (!is_file_exist(inputfile1))
+    {
+        cout << "the reference point cloud not found!" << endl;
+        return;
+    }
+
+    if (!is_file_exist(inputfile2))
+    {
+        cout << "the target point cloud not found!" << endl;
+        return;
+    }
+
     //const char* inputfile1 = "D:/work/python_lib_code/F5_March_2019_1cm_crop_crop_small_small.las";
     //const char* inputfile2 = "D:/work/python_lib_code/F5_October_2019_1cm_crop_crop_register_small_small.las";
     //const char* corepointfile = inputfile1;

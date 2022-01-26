@@ -2,11 +2,6 @@
 
 #define NIEGH_RATIO 7.8
 
-bool is_file_exist(const char* fileName)
-{
-	std::ifstream infile(fileName);
-	return infile.good();
-}
 
 // automatical volume calculation for a single point cloud
 void Volcal(const char* volfile)
@@ -84,6 +79,7 @@ void Volcal(const char* groundfile, const char* ceilfile)
 	VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, finalgridStep, result,
 		          neighbourratio, FillEmptyStrategy::INTERPOLATE);
 
+
 	cout << " the optimal girdstep is " << finalgridStep << endl;
 
 	cout << "---------------Volume Info---------------" << endl;
@@ -136,7 +132,7 @@ void Volcal(const char* groundfile, const char* ceilfile, double gridstep)
 
 	VolumeResults result;
 	if (VolumeDiffCal(groundpoints, ceilpoints, miniCorner, maxiCorner, gridstep, result,
-		neighbourratio, FillEmptyStrategy::EMPTY, true))
+		neighbourratio, FillEmptyStrategy::INTERPOLATE, true))
 	{
 		cout << " the given girdstep is " << gridstep << endl;
 

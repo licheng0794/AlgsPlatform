@@ -3,10 +3,11 @@
 #include "../shared/FileLAS.hpp"
 #include "../shared/PointCloudAI.hpp"
 #include <ctime>
+
 // note: I did not use dll and lib since they did not work may because of the version compatibility
 // I directly add source code of http://ramm.bnu.edu.cn/projects/CSF/download/#source-code
 
-int main(int argc, char* argv[])
+void main(int argc, char* argv[])
 {
 
     //step 1 read point cloud
@@ -15,13 +16,19 @@ int main(int argc, char* argv[])
     {
         cout << "the number of the input parameters is not 1!" << endl;
         cout << "the correct form is 'CSF inputcloud' (other parameters are fixed)" << endl;
-        return 0;
+        return;
     }
 
-    cout << "The CSF for ground filter is running!" << endl;
+    const char* inputfile1 = argv[1];
+
+    if (!is_file_exist(inputfile1))
+    {
+        cout << "the input file not found!" << endl;
+        return;
+    }
 
     CSF csf;
-    const char* inputfile1 = argv[1];
+    cout << "The CSF for ground filter is running!" << endl;
     vector<Eigen::Vector3d> bbox(2);
     vector<Eigen::Vector3d> point3D = ReadLas(inputfile1, bbox);
 
@@ -38,8 +45,6 @@ int main(int argc, char* argv[])
     }
 
     csf.setPointCloud(pointcloud);
-
-    //csf.readPointsFromFile("CSFutm_small.xyz");
 
     //step 2 parameter settings
     //Among these paramters:  
@@ -60,10 +65,7 @@ int main(int argc, char* argv[])
     
     std::vector<int> GroundIndexes, offGroundIndexes;
     csf.do_filtering(GroundIndexes, offGroundIndexes);
-    /*csf.savePoints(groundIndexes, "ground.txt");
-    csf.savePoints(offGroundIndexes, "non-ground.txt");*/
 
-    
     vector<Eigen::Vector3d>  groundlas;
     for (int i = 0; i < GroundIndexes.size(); i++)
     {
