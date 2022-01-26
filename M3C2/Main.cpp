@@ -73,13 +73,13 @@ void main(int argc, char* argv[])
 
     if (!is_file_exist(inputfile1))
     {
-        cout << "the reference point cloud not found!" << endl;
+        cout << "the first input file not found!" << endl;
         return;
     }
 
     if (!is_file_exist(inputfile2))
     {
-        cout << "the target point cloud not found!" << endl;
+        cout << "the second input file not found!" << endl;
         return;
     }
 
