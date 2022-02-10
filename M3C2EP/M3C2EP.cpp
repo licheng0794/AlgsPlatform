@@ -153,7 +153,17 @@ void M3C2EP(const char* incloud1, const char* incloud2, const char* cpcloud, con
     vector<Eigen::Vector3d> bbox(2);
     vector<int> Rsrcid;
     cout << "1. Reading the reference point cloud!" << endl;
-    vector<Eigen::Vector3d> point3D = ReadLasPtSrc(incloud1, bbox, Rsrcid);
+    vector<Eigen::VectorXd> MetaData;
+    vector<ExtraDim> extraDims;
+    vector<Eigen::Vector3d> point3D = ReadLas(incloud1, bbox, MetaData, extraDims);
+    // save PointSourceId 
+    for (int i = 0; i < MetaData.size(); i++)
+    {
+        Rsrcid.push_back(MetaData[i][8]);
+    }
+    
+
+    //vector<Eigen::Vector3d> point3D = ReadLasPtSrc(incloud1, bbox, Rsrcid);
 
     size_t sz = Rsrcid.size();
     // Calculate the mean
@@ -173,7 +183,14 @@ void M3C2EP(const char* incloud1, const char* incloud2, const char* cpcloud, con
     cout << "2. Reading the target point cloud!" << endl;
 
     vector<int> Csrcid;
-    point3D = ReadLasPtSrc(incloud2, bbox, Csrcid);
+    vector<Eigen::VectorXd> MetaDataTarget;
+    vector<ExtraDim> extraDimsTarget;
+    point3D = ReadLas(incloud1, bbox, MetaDataTarget, extraDimsTarget);
+    // save PointSourceId 
+    for (int i = 0; i < MetaDataTarget.size(); i++)
+    {
+        Csrcid.push_back(MetaDataTarget[i][8]);
+    }
 
     sz = Csrcid.size();
     // Calculate the mean
@@ -238,14 +255,20 @@ void M3C2EP(const char* incloud1, const char* incloud2, const char* cpcloud, con
     g_M3C2EPparams.projDepth = 7.45075;*/
 
     cout << "6. Reading the core points!" << endl;
+
+    vector<Eigen::VectorXd> MetaDataCore;
+    vector<ExtraDim> extraDimsCore;
+
     if (strcmp(incloud1, cpcloud) == 0)
     {
         g_M3C2EPparams.corepoints = g_M3C2EPparams.pCloud1->m_point3D;
+        MetaDataCore = MetaData;
+        extraDimsCore = extraDims;
         cout << "   the core point is the same with the reference point cloud!" << endl;
     }
     else
     {
-        point3D = ReadLas(cpcloud, bbox);
+        point3D = ReadLas(cpcloud, bbox, MetaDataCore, extraDimsCore);
         g_M3C2EPparams.corepoints = point3D;
     }
 
@@ -312,7 +335,7 @@ void M3C2EP(const char* incloud1, const char* incloud2, const char* cpcloud, con
     }
 
     // save results to a las file;
-    if (SaveLasExtraDims(outcloud, g_M3C2EPparams.corepoints, g_M3C2EPparams.M3C2EPdists, g_M3C2EPparams.M3C2EPsigchg, g_M3C2EPparams.M3C2EPlod))
+    if (SaveLasExtraDims(outcloud, g_M3C2EPparams.corepoints, MetaDataCore, extraDimsCore, g_M3C2EPparams.M3C2EPdists, g_M3C2EPparams.M3C2EPsigchg, g_M3C2EPparams.M3C2EPlod))
     {
         cout << "Saving running results successfully!" << endl;
     }

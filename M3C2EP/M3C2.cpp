@@ -34,12 +34,17 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
 
     vector<Eigen::Vector3d> bbox(2);
     cout << "1. Reading the reference point cloud!" << endl;
-    vector<Eigen::Vector3d> point3D = ReadLas(incloud1, bbox);
+    vector<Eigen::VectorXd> MetaData;
+    vector<ExtraDim> extraDims;
+    vector<Eigen::Vector3d> point3D = ReadLas(incloud1, bbox, MetaData, extraDims);
+
     g_M3C2Params.pCloud1 = new PointCloudAI(point3D, bbox);
     cout << "   the reference point cloud has " << point3D.size() << " points!" << endl;
 
     cout << "2. Reading the target point cloud!" << endl;
-    point3D = ReadLas(incloud2, bbox);
+    vector<Eigen::VectorXd> MetaDataTarget;
+    vector<ExtraDim> extraDimsTarget;
+    point3D = ReadLas(incloud2, bbox, MetaDataTarget, extraDimsTarget);
     g_M3C2Params.pCloud2 = new PointCloudAI(point3D, bbox);
     cout << "   the target point cloud has " << point3D.size() << " points!" << endl;
 
@@ -72,14 +77,19 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
     //g_M3C2Params.projDepth = 2.45;
     
     cout << "6. Reading the core points!" << endl;
+    vector<Eigen::VectorXd> MetaDataCore;
+    vector<ExtraDim> extraDimsCore;
+
     if (strcmp(incloud1, cpcloud)==0)
     {
         g_M3C2Params.corepoints = g_M3C2Params.pCloud1->m_point3D;
+        MetaDataCore = MetaData;
+        extraDimsCore = extraDims;
         cout << "   the core point is the same with the reference point cloud!" << endl;
     }
     else
     {
-        point3D = ReadLas(cpcloud, bbox);
+        point3D = ReadLas(cpcloud, bbox, MetaDataCore, extraDimsCore);
         g_M3C2Params.corepoints = point3D;
     }
     //g_M3C2Params.corepoints.clear();
@@ -150,19 +160,22 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
 
     if (IF_DEBUG)
     {
-        std::clock_t start;
-        double duration;
-        start = std::clock(); // get current time
+       
         // 10000 core points take 18.887s
         // 20000 core points take 48.211s
-        for (int index = 0; index < corepointindex.size(); index++)
+        // for (int index = 0; index < corepointindex.size(); index++)
+        for (int index = 100000; index < 110000; index++)
         {
-           
+            std::clock_t start;
+            double duration;
+            start = std::clock(); // get current time  
             computeM3C2(index);  
             // duration 0.001s for each
+            duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+            cout << "the point index is " << index << endl;
+            std::cout << "Operation took " << duration << "seconds" << std::endl;
         }
-        duration = (std::clock()-start) / (double)CLOCKS_PER_SEC;
-        std::cout << "Operation took " << duration << "seconds" << std::endl;
+        
         
     }
     else
@@ -186,7 +199,7 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
     }
 
     // save results to a las file;
-    if (SaveLasExtraDims(outcloud, g_M3C2Params.corepoints, g_M3C2Params.M3C2dists, g_M3C2Params.M3C2sigchg, g_M3C2Params.M3C2lod))
+    if (SaveLasExtraDims(outcloud, g_M3C2Params.corepoints, MetaDataCore, extraDimsCore, g_M3C2Params.M3C2dists, g_M3C2Params.M3C2sigchg, g_M3C2Params.M3C2lod))
     {
         cout << "Saving running results successfully!" << endl;
     }
@@ -209,9 +222,14 @@ void computeM3C2(int index)
     
     // for the refence point cloud pCloud1
     // get neighbour candidates
+    //std::clock_t start;
+    //double duration;
+    //start = std::clock(); // get current time  
     int k = g_M3C2Params.pCloud1->NeighbourSearchRadius(g_M3C2Params.corepoints[index], EffectiveSearchRadius,
         neigh_candidate_indices, neigh_candidate_dists);
 
+    /*duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+    std::cout << "Operation of C1 neighbour search took " << duration << "seconds" << std::endl;*/
  
     //cout << "the current core point have neighbours " << L << endl;
     //cout << "the effectivesearchradius is " << EffectiveSearchRadius << endl;
@@ -230,8 +248,11 @@ void computeM3C2(int index)
 
     vector<double> projDist1; // the distances of points projected to the normal direction
     // N is normal
+    //start = std::clock(); // get current time 
     int n1 = GetRealNeighbours(candidate, neigh_candidate_indices, corepoint, N, g_M3C2Params.projScale / 2, g_M3C2Params.projDepth, projDist1);
-    
+    //duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+    //std::cout << "Operation of C1 real neighbour returned took " << duration << "seconds" << std::endl;
+
     if (n1 < g_M3C2Params.minneighbours)
     {
         return; // not able to compute statistcs
@@ -239,8 +260,12 @@ void computeM3C2(int index)
 
     // for the targeted point cloud pCloud2
     // get neighbour candidates
+    //start = std::clock(); // get current time 
     k = g_M3C2Params.pCloud2->NeighbourSearchRadius(g_M3C2Params.corepoints[index], EffectiveSearchRadius,
         neigh_candidate_indices, neigh_candidate_dists);
+    //duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+    //std::cout << "Operation of C2 neighbour search took " << duration << "seconds" << std::endl;
+
     //cout << "the current core point in cloud2 have neighbours " << k << endl;
     if (k < g_M3C2Params.minneighbours)
     {
@@ -255,7 +280,11 @@ void computeM3C2(int index)
 
     vector<double> projDist2; // the distances of points projected to the normal direction
 
+    //start = std::clock(); // get current time 
     int n2 = GetRealNeighbours(candidate, neigh_candidate_indices, corepoint, N, g_M3C2Params.projScale / 2, g_M3C2Params.projDepth, projDist2);
+
+    //duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+    //std::cout << "Operation of C2 real neighbour returned took " << duration << "seconds" << std::endl;
 
     if (n2 < g_M3C2Params.minneighbours)
     {
@@ -341,13 +370,13 @@ int GetRealNeighbours(vector <Eigen::Vector3d>&candidates, vector <int>&candidat
     }
     else
     {
-     /*   parallel_for_each(candindex.begin(), candindex.end(), [&](int ind) {
+        parallel_for_each(candindex.begin(), candindex.end(), [&](int ind) {
             computeAlongAcross(candidates[ind] - corepoint, N, alongval, acrossval);
             along[ind] = alongval;
             across[ind] = acrossval;
-            });*/
+            });
 
-        for (int i = 0; i < candidates.size(); i++)
+      for (int i = 0; i < candidates.size(); i++)
         {
             computeAlongAcross(candidates[i] - corepoint, N, alongval, acrossval);
             along[i] = alongval;

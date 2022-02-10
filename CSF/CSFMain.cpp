@@ -30,7 +30,11 @@ void main(int argc, char* argv[])
     CSF csf;
     cout << "The CSF for ground filter is running!" << endl;
     vector<Eigen::Vector3d> bbox(2);
-    vector<Eigen::Vector3d> point3D = ReadLas(inputfile1, bbox);
+    vector<Eigen::VectorXd> MetaData;
+    vector<ExtraDim> extraDims;
+    vector<Eigen::Vector3d> point3D = ReadLas(inputfile1, bbox, MetaData, extraDims);
+    
+    cout << "Reading the input file is successful!" << endl;
 
     csf::PointCloud pointcloud;
 
@@ -67,27 +71,44 @@ void main(int argc, char* argv[])
     csf.do_filtering(GroundIndexes, offGroundIndexes);
 
     vector<Eigen::Vector3d>  groundlas;
+    vector<Eigen::VectorXd> groundMeta;
     for (int i = 0; i < GroundIndexes.size(); i++)
     {
         groundlas.push_back(point3D[GroundIndexes[i]]);
+        groundMeta.push_back(MetaData[GroundIndexes[i]]);
     }
 
-    SaveLas("ground.las", groundlas);
+    std::string strname(inputfile1);
+
+    std::string base_filename = strname.substr(strname.find_last_of("/\\") + 1);
+
+    std::string::size_type const p(base_filename.find_last_of('.'));
+
+    std::string file_without_extension = base_filename.substr(0, p);
+
+    //std::string suffix = base_filename.substr(p + 1, base_filename.length());
+
+    std::string groundname = file_without_extension + "_ground.las";
+    std::string nongroundname = file_without_extension + "_non_ground.las";
+
+    SaveLas(groundname.c_str(), groundlas, groundMeta, extraDims);
 
     vector<Eigen::Vector3d>  nongroundlas;
+    vector<Eigen::VectorXd> nongroundMeta;
     for (int i = 0; i < offGroundIndexes.size(); i++)
     {
         nongroundlas.push_back(point3D[offGroundIndexes[i]]);
+        nongroundMeta.push_back(MetaData[offGroundIndexes[i]]);
     }
-    SaveLas("non-ground.las", nongroundlas);
+    SaveLas(nongroundname.c_str(), nongroundlas, nongroundMeta, extraDims);
 
 
     cout << "the ground precentage is " << GroundIndexes.size()*100.0 / (GroundIndexes.size() + offGroundIndexes.size()) << "%" << endl;
 
-    cout << "successfully save results in 'ground.las' and 'non-ground.las'" << endl;
+    cout << "successfully save results in '_ground.las' and '_non_ground.las'" << endl;
 
     duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
-    cout << "Operation took " << duration << "seconds" << endl;
+    cout << "Operation took " << duration << " seconds" << endl;
 
 }
 

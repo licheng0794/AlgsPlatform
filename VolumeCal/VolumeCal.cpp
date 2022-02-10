@@ -2,8 +2,57 @@
 
 #define NIEGH_RATIO 7.8
 
-
 // automatical volume calculation for a single point cloud
+
+void savedResult(const char*SavedReportName, double gridstep, VolumeResults result, bool optimalgrid)
+{
+	std::ofstream out(SavedReportName);
+	std::string resultstr;
+	if (optimalgrid)
+	{
+		resultstr = "the optimal girdstep is " + std::to_string(gridstep);
+	}
+	else
+	{
+		resultstr = "the girdstep is " + std::to_string(gridstep);
+	}
+	 
+	out << resultstr;
+	out << endl;
+
+	resultstr = "---------------Volume Info---------------"; 
+	out << resultstr;
+	out << endl;
+
+	resultstr = "the volume difference is " + std::to_string(result.VolumeDiff);
+	out << resultstr;
+	out << endl;
+
+	resultstr = "the added volume is " + std::to_string(result.addedVolume);
+	out << resultstr;
+	out << endl;
+
+	resultstr = "the removed volume is " + std::to_string(result.removedVolume);
+	out << resultstr;
+	out << endl;
+
+	resultstr = "the surface is " + std::to_string(result.Surface);
+	out << resultstr;
+	out << endl;
+
+	resultstr = "the matching percentage between ground and ceil is " + std::to_string(result.matchPercentage) + "%";
+	out << resultstr;
+	out << endl;
+	
+	resultstr = "the non-matching percentage ground is " + std::to_string(result.nonmatchGroundPercentage) + "%";
+	out << resultstr;
+	out << endl;
+
+	resultstr = "the non-matching percentage ceil is " + std::to_string(result.nonmatchCeilPercentage) + "%";
+	out << resultstr;
+	out << endl;
+}
+
 void Volcal(const char* volfile)
 {
 	if (!is_file_exist(volfile))
@@ -31,10 +80,12 @@ void Volcal(const char* groundfile, const char* ceilfile)
 
 	// read files
 	vector<Eigen::Vector3d> groundbbox(2);
-	vector<Eigen::Vector3d> groundpoints = ReadLas(groundfile, groundbbox);
+	vector<Eigen::VectorXd> MetaData;
+	vector<ExtraDim> extraDims;
+	vector<Eigen::Vector3d> groundpoints = ReadLas(groundfile, groundbbox, MetaData, extraDims);
 
 	vector<Eigen::Vector3d> ceilbbox(2);
-	vector<Eigen::Vector3d> ceilpoints = ReadLas(ceilfile, ceilbbox);
+	vector<Eigen::Vector3d> ceilpoints = ReadLas(ceilfile, ceilbbox, MetaData, extraDims);
 
 	// 1. find the minicorner  where we start to grid point cloud
 	Eigen::Vector3d miniCorner;
@@ -91,6 +142,9 @@ void Volcal(const char* groundfile, const char* ceilfile)
 	cout << " the matching percentage between ground and ceil is " << result.matchPercentage << "%" << endl;
 	cout << " the non-matching percentage ground is " << result.nonmatchGroundPercentage << "%" << endl;
 	cout << " the non-matching percentage ceil is " << result.nonmatchCeilPercentage << "%" << endl;
+	const char* SavedReportName = CombineFileName(groundfile, "_VolChangeReport.txt");
+	SaveResult(SavedReportName, finalgridStep, result, true);
+	cout << " the volume change result has been saved in " << SavedReportName << endl;
 
 }
 
@@ -112,10 +166,12 @@ void Volcal(const char* groundfile, const char* ceilfile, double gridstep)
 
 	// read files
 	vector<Eigen::Vector3d> groundbbox(2);
-	vector<Eigen::Vector3d> groundpoints = ReadLas(groundfile, groundbbox);
+	vector<Eigen::VectorXd> MetaData;
+	vector<ExtraDim> extraDims;
+	vector<Eigen::Vector3d> groundpoints = ReadLas(groundfile, groundbbox, MetaData, extraDims);
 
 	vector<Eigen::Vector3d> ceilbbox(2);
-	vector<Eigen::Vector3d> ceilpoints = ReadLas(ceilfile, ceilbbox);
+	vector<Eigen::Vector3d> ceilpoints = ReadLas(ceilfile, ceilbbox, MetaData, extraDims);
 
 	// 1. find the minicorner  where we start to grid point cloud
 	Eigen::Vector3d miniCorner;
@@ -145,6 +201,10 @@ void Volcal(const char* groundfile, const char* ceilfile, double gridstep)
 		cout << " the matching percentage between ground and ceil is " << result.matchPercentage << "%" << endl;
 		cout << " the non-matching percentage ground is " << result.nonmatchGroundPercentage << "%" << endl;
 		cout << " the non-matching percentage ceil is " << result.nonmatchCeilPercentage << "%" << endl;
+		
+		const char* SavedReportName = CombineFileName(groundfile, "_VolChangeReport.txt");
+		SaveResult(SavedReportName, gridstep, result);
+		cout << " the volume change result has been saved in " << SavedReportName << endl;
 	}
 
 }
