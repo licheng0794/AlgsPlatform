@@ -4,7 +4,7 @@
 
 // automatical volume calculation for a single point cloud
 
-void savedResult(const char*SavedReportName, double gridstep, VolumeResults result, bool optimalgrid)
+void SaveResult(const char*SavedReportName, double gridstep, VolumeResults result, bool optimalgrid)
 {
 	std::ofstream out(SavedReportName);
 	std::string resultstr;

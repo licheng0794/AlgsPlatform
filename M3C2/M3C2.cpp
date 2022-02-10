@@ -204,7 +204,6 @@ void M3C2(const char* incloud1, const char* incloud2, const char* cpcloud, const
         cout << "Saving running results successfully!" << endl;
     }
 
-
 }
 
 void computeM3C2(int index)

@@ -14,11 +14,11 @@ static bool ReadExtraBytesVlr(LasHeader& header, std::vector<ExtraDim>& extraDim
 	size_t size = vlr->dataLen();
 	if (size % sizeof(ExtraBytesSpec) != 0)
 	{
-		cout << "[LAS] Bad size for extra bytes VLR. Ignoring." << endl;
+		// cout << "[LAS] Bad size for extra bytes VLR. Ignoring." << endl;
 		return false;
 	}
 	size_t count = size / sizeof(ExtraBytesSpec);
-	cout << "[LAS] VLR count: " << count << endl;;
+	//cout << "[LAS] VLR count: " << count << endl;;
 
 	try
 	{
@@ -32,7 +32,7 @@ static bool ReadExtraBytesVlr(LasHeader& header, std::vector<ExtraDim>& extraDim
 			std::vector<ExtraDim> eds = eb.toExtraDims();
 			for (const ExtraDim& ed : eds)
 			{
-				cout << "VLR " << (i + 1) << " : " << ed.m_name << endl;
+				// cout << "VLR " << (i + 1) << " : " << ed.m_name << endl;
 				extraDims.push_back(ed);
 			}
 		}
