@@ -26,7 +26,29 @@ Examples:
  - VolumeCal ../../data/F5_March_2019_1cm_crop_crop_small_small.las ../../data/F5_October_2019_1cm_crop_crop_register_small_small.las
    An example with a given gridstep is:
  - VolumeCal ../../data/F5_March_2019_1cm_crop_crop_small_small.las ../../data/F5_October_2019_1cm_crop_crop_register_small_small.las 0.1
+
+  VolumeCal for the volume calculation of a single point cloud or mesh.
+  An example for volume calculation of a single point cloud:
+ - VolumeCal ../../data/Onslow_210623_Stockpile1.las
+  An example for volume calculation of a open mesh:
+ - VolumeCal ../../data/OpenCone.ply
+  An example for volume calculation of a closed mesh:
+ - VolumeCal ../../data/ClosedCone.ply
+
 3. M3C2 for change detection between two time epochs. An example is: 
  - M3C2 ../../data/F5_March_2019_1cm_crop_crop_small_small.las ../../data/F5_October_2019_1cm_crop_crop_register_small_small.las M3C2result.las
+ - M3C2 ../../data/Stockpile_Test0.las ../../data/Stockpile_Test1.las M3C2result.las
+ - M3C2 ../../data/2020-05-12.laz ../../data/2020-05-17.laz M3C2result.las
+
 3. M3C2-EP for change detection between two time epochs. An example is: 
  - M3C2EP ../../data/2017_652700_5189300_gnd.laz ../../data/2018A_652700_5189300_gnd.laz M3C2EPresult.las
+
+
+log:
+date: 09-Feb-2022
+revision:
+1. in CSF, automatically save filename_ground.las and filename_non_ground.las
+2. added calculation time in volume calculation
+3. saved volume change calculation result in filename_VolChangeReport.txt
+4. keep all attributes of the input file to the output file (the las reading and writing has been changed)
+

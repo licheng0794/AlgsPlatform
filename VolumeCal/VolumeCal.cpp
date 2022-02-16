@@ -55,12 +55,148 @@ void SaveResult(const char*SavedReportName, double gridstep, VolumeResults resul
 
 void Volcal(const char* volfile)
 {
-	if (!is_file_exist(volfile))
+
+	string filestr(volfile);
+
+	if (filestr.substr(filestr.find_last_of(".") + 1) == "las" |
+		filestr.substr(filestr.find_last_of(".") + 1) == "laz")
 	{
-		cout << "the input file not found!" << endl;
+		VolPointCloud(volfile);
+	}
+	if (filestr.substr(filestr.find_last_of(".") + 1) == "ply" |
+		filestr.substr(filestr.find_last_of(".") + 1) == "obj")
+	{
+		VolMesh(volfile);
+	}
+
+
+	return;
+}
+
+// volume for a point cloud. It works only for stockpile at this stage
+void VolPointCloud(const char* volfile)
+{
+	cout << "the input is a point cloud file !" << endl;
+	cout << "Note: it only works for volume calculation of stockpile at this stage!" << endl;
+
+	//cout << "Meshing point cloud is running!" << endl;
+
+	PointCloud pointcloud;
+	vector<Eigen::Vector3d> bbox(2);
+	vector<Eigen::VectorXd> MetaData;
+	vector<ExtraDim> extraDims;
+	vector<Eigen::Vector3d> point3D = ReadLas(volfile, bbox, MetaData, extraDims);
+	PointCloudAI* pCloud = new PointCloudAI(point3D, bbox);
+
+	Eigen::Vector3d avgPoint = pCloud->averagePointCloud();
+	for (vector<Eigen::Vector3d>::iterator it = pCloud->m_point3D.begin(); it != pCloud->m_point3D.end(); it++) {
+		pointcloud.points_.push_back(*it - avgPoint);
+		//pointcloud.points_.push_back(*it);
+	}
+
+	const KDTreeSearchParam& search_param = KDTreeSearchParamKNN(30);
+	pointcloud.EstimateNormals(search_param);
+	vector<Eigen::Vector3d> Normals = pointcloud.normals_;
+
+	// reload points into pointcloud
+	pointcloud.points_.clear();
+	for (vector<Eigen::Vector3d>::iterator it = pCloud->m_point3D.begin(); it != pCloud->m_point3D.end(); it++) {
+		pointcloud.points_.push_back(*it);
+	}
+
+	pointcloud.normals_.clear();
+	for (int i = 0; i < Normals.size(); i++) {
+
+		if (Normals[i].dot(avgPoint - pointcloud.points_[i]) > 0)
+		{
+			pointcloud.normals_.push_back(Normals[i]);
+		}
+		else
+		{
+			pointcloud.normals_.push_back(-1 * Normals[i]);
+		}
+	}
+
+
+	if (!pointcloud.HasNormals())
+	{
+		cout << "the point cloud has no normal!" << endl;
 		return;
 	}
-	return;
+	auto value = open3d::geometry::TriangleMesh::CreateFromPointCloudPoisson(pointcloud, 10);
+
+	TriangleMesh trimesh;
+	auto v = std::get < 0 >(value);
+	//auto v = value;
+	trimesh = *(v.get());
+
+	AxisAlignedBoundingBox boundbox;
+	boundbox = pointcloud.GetAxisAlignedBoundingBox();
+	TriangleMesh cropmesh = *(trimesh.Crop(boundbox).get());
+
+
+	cropmesh.RemoveDegenerateTriangles();
+	cropmesh.RemoveDuplicatedTriangles();
+	cropmesh.RemoveDuplicatedVertices();
+	cropmesh.RemoveNonManifoldEdges();
+	cropmesh.RemoveUnreferencedVertices();
+
+	Eigen::Vector3d minconer = bbox.at(0);
+	auto GetSignedVolumeOfTriangle = [&](size_t tidx) {
+		const Eigen::Vector3i& triangle = cropmesh.triangles_[tidx];
+		const Eigen::Vector3d& vertex0 = cropmesh.vertices_[triangle(0)] - minconer;
+		const Eigen::Vector3d& vertex1 = cropmesh.vertices_[triangle(1)] - minconer;
+		const Eigen::Vector3d& vertex2 = cropmesh.vertices_[triangle(2)] - minconer;
+		return vertex0.dot(vertex1.cross(vertex2)) / 6.0;
+	};
+
+	double volume = 0;
+	int64_t num_triangles = cropmesh.triangles_.size();
+	cout << "the number of triangles in mesh: " << num_triangles << endl;
+#pragma omp parallel for reduction(+ : volume) num_threads(utility::EstimateMaxThreads())
+	for (int64_t tidx = 0; tidx < num_triangles; ++tidx) {
+		volume += GetSignedVolumeOfTriangle(tidx);
+	}
+	cout << "the volume of the point cloud is: " << std::abs(volume) << endl;
+
+	//open3d::io::WriteTriangleMesh("o3dPoisson.ply", cropmesh);
+	
+}
+
+void VolMesh(const char* volfile)
+{
+	cout << "the input is a mesh file!" << endl;
+	cout << "Reading the input mesh!" << endl;
+	TriangleMesh trimesh;
+	open3d::io::ReadTriangleMesh(volfile, trimesh);
+
+	/*if (!trimesh.IsWatertight()) {
+		cout << "The mesh is not watertight, and the volume may be not accurate!" << endl;
+	}
+
+	if (!trimesh.IsOrientable()) {
+		cout << "The mesh is not orientable, and the volume may be not accurate!" << endl;
+	}*/
+
+	Eigen::Vector3d minconer = trimesh.GetMinBound();
+	auto GetSignedVolumeOfTriangle = [&](size_t tidx) {
+		const Eigen::Vector3i& triangle = trimesh.triangles_[tidx];
+		const Eigen::Vector3d& vertex0 = trimesh.vertices_[triangle(0)] - minconer;
+		const Eigen::Vector3d& vertex1 = trimesh.vertices_[triangle(1)] - minconer;
+		const Eigen::Vector3d& vertex2 = trimesh.vertices_[triangle(2)] - minconer;
+		return vertex0.dot(vertex1.cross(vertex2)) / 6.0;
+	};
+
+	double volume = 0;
+	int64_t num_triangles = trimesh.triangles_.size();
+	cout << "the number of triangles in mesh: " << num_triangles << endl;
+#pragma omp parallel for reduction(+ : volume) num_threads(utility::EstimateMaxThreads())
+	for (int64_t tidx = 0; tidx < num_triangles; ++tidx) {
+		volume += GetSignedVolumeOfTriangle(tidx);
+	}
+	cout << "the volume of the mesh is: " << std::abs(volume) 
+		<< " (The value may not be accurate if the mesh is not Watertight!)" << endl;
+
 }
 
 // automatical volume change calculation for two scans
