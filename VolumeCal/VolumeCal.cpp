@@ -1,5 +1,5 @@
 # include "VolumeCal.hpp"
-
+# include "Delaunator.hpp"
 #define NIEGH_RATIO 7.8
 
 // automatical volume calculation for a single point cloud
@@ -63,24 +63,208 @@ void Volcal(const char* volfile)
 	{
 		VolPointCloud(volfile);
 	}
-	if (filestr.substr(filestr.find_last_of(".") + 1) == "ply" |
-		filestr.substr(filestr.find_last_of(".") + 1) == "obj")
-	{
-		VolMesh(volfile);
-	}
-
 
 	return;
 }
 
-// volume for a point cloud. It works only for stockpile at this stage
+// N is the number of points
+vector<int> findboundary(delaunator::Delaunator d, int N)
+{
+	vector<int> boundaryIdices;
+	vector<vector<int>> labels(N); // store the position indices of each point in d
+
+	for (int i = 0; i < d.triangles.size(); i++)
+	{
+		int idx = d.triangles[i];
+
+		labels[idx].push_back(i);
+	}
+
+
+	for (int i = 0; i < labels.size(); i++)
+	{
+		// check whether it is boundary
+		int faceno = labels[i].size();
+		vector<int> posvec;
+		for (int j = 0; j < faceno; j++)
+		{
+			int pos = labels[i][j];
+
+			if (pos % 3 == 0)
+			{
+				posvec.push_back(d.triangles[pos + 1]);
+				posvec.push_back(d.triangles[pos + 2]);
+			}
+			else if (pos % 3 == 1)
+			{
+				posvec.push_back(d.triangles[pos - 1]);
+				posvec.push_back(d.triangles[pos + 1]);
+			}
+			else // pos % 3 == 2
+			{
+				posvec.push_back(d.triangles[pos - 2]);
+				posvec.push_back(d.triangles[pos - 1]);
+			}
+		}
+
+		sort(posvec.begin(), posvec.end());
+		int count = std::distance(posvec.begin(), std::unique(posvec.begin(), posvec.begin() + posvec.size()));
+
+		// it is a boundary vertex
+		if (count != faceno)
+		{
+			boundaryIdices.push_back(i);
+		}
+	}
+
+	return boundaryIdices;
+
+}
+
+template<typename T>
+T stdvariance(const std::vector<T>& vec) {
+	const size_t sz = vec.size();
+	if (sz == 1) {
+		return 0.0;
+	}
+
+	// Calculate the mean
+	const T mean = std::accumulate(vec.begin(), vec.end(), 0.0) / sz;
+
+	// Now calculate the variance
+	auto variance_func = [&mean, &sz](T accumulator, const T& val) {
+		return accumulator + ((val - mean) * (val - mean) / (sz));
+	};
+
+	return std::sqrt(std::accumulate(vec.begin(), vec.end(), 0.0, variance_func));
+}
+
+void PaintMesh(open3d::geometry::TriangleMesh& mesh,
+	const vector<Eigen::Vector3d>& color) {
+	mesh.vertex_colors_.resize(mesh.vertices_.size());
+	for (size_t i = 0; i < mesh.vertices_.size(); i++) {
+		mesh.vertex_colors_[i] = color[i];
+	}
+}
+
+bool planefitABC(vector<Eigen::Vector3d> points, double n[4])
+{
+	// n[0,1,2]      An array of three doubles containing the unit normal of the best fit plane.
+	// n[3] 
+
+	// The Aramadillo library was used in this work:
+	// Conrad Sanderson and Ryan Curtin
+	// "Armadillo: a template - based C++ library for linear algebra".
+	//	Journal of Open Source Software, Vol. 1, pp. 26, 2016.
+	// See http://arma.sourceforge.net/ for details.
+	n[0] = 0.0;
+	n[1] = 0.0;
+	n[2] = 1.0;
+
+	Eigen::Vector3d centriod(0, 0, 0);
+
+	for (size_t i = 0; i < points.size(); ++i) {
+		centriod += points[i];
+	}
+
+	centriod = centriod / (double)points.size();
+
+	// Instantiate a 3 x N armadillo matrix X, where N is the number of input points.
+	// The (arma::uword) cuts out warnings from the compiler concerning
+	// potential loass of data from conversion.
+
+	mat X((arma::uword)3, (arma::uword)(points.size()));
+
+	// Initialize X with the co-ordinates of the input points relative to the centroid.
+	// This, in effect, 'projects' the intput point set to the origin.
+
+	for (int i = 0; i < (int)points.size(); ++i) {
+		X(0, i) = points[i][0] - centriod[0];
+		X(1, i) = points[i][1] - centriod[1];
+		X(2, i) = points[i][2] - centriod[2];
+	}
+
+	// The next step is to perform a singular value decomposition of the 3 x N matrix X.
+	// This means finding a diagonal 3 x N matrix S such that X = USV^t, where U is 3x3 orthogonal and
+	// V is NxN orthogonal.
+	// Because the matrix S is diagonal, we only need a vector to house its values.
+
+	mat U;  // Instantiate an armadillo matrix for U.
+	vec S;  // Instantiate an armadillo vector for S.
+	mat V;  // Instantiate an armadillo matrix for V.
+
+	// Perform a Singular Value Decomposition of the matrix X using armadillo.
+
+	if (!svd(U, S, V, X, "std")) {
+		return false;
+	}
+	// U is now a 3x3 orthogonal matrix
+	// S is a vector of dimension 3.
+	// V is now an N x N orthogonal matrix.
+
+	// The normal to the plane is the eigenvector in U that corresponds to the
+	// minimal value (eigenvector) in S. Note the () overload used by armadillo
+	// on the vector S.
+
+	int imin = 0;
+	if (abs(S(1)) < abs(S(0))) imin = 1;
+	if (abs(S(2)) < abs(S(imin))) imin = 2;
+
+	n[0] = U(0, imin);
+	n[1] = U(1, imin);
+	n[2] = U(2, imin);
+
+	n[3] = -1 * (n[0] * centriod[0] + n[1] * centriod[1] + n[2] * centriod[2]);
+
+	return true;
+
+}
+
+double dotproduct(Eigen::Vector3d v1, Eigen::Vector3d v2)
+{
+	return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
+}
+
+void ProjDisPoint(vector<Eigen::Vector3d> points, double* n, vector<Eigen::Vector3d>& Projpoints, vector<double>& distoplane)
+{
+	// n is the plane formulation
+	Eigen::Vector3d normal(n[0], n[1], n[2]);
+	double u = n[0] * n[0] + n[1] * n[1] + n[2] * n[2];
+
+	for (int i = 0; i < points.size(); i++)
+	{
+		double v = dotproduct(normal, points[i]) + n[3];
+
+		double dis = std::abs(v) / std::sqrt(u);
+		distoplane.push_back(dis);
+
+		double t = v / u;
+
+		Projpoints.push_back(Eigen::Vector3d(points[i][0] - n[0] * t, points[i][1] - n[1] * t,
+			points[i][2] - n[2] * t));
+	}
+}
+
+double trianglearea(Eigen::Vector3d A, Eigen::Vector3d B, Eigen::Vector3d C)
+{
+	Eigen::Vector3d AB = B - A;
+	Eigen::Vector3d AC = C - A;
+
+	Eigen::Vector3d crossproduct;
+	crossproduct[0] = AB[1] * AC[2] - AB[2] * AC[1];
+	crossproduct[1] = -(AB[0] * AC[2] - AB[2] * AC[0]);
+	crossproduct[2] = AB[0] * AC[1] - AB[1] * AC[0];
+
+	double area = 0.5 * std::sqrt(crossproduct[0] * crossproduct[0] +
+		crossproduct[1] * crossproduct[1] + crossproduct[2] * crossproduct[2]);
+
+	return area;
+}
+
 void VolPointCloud(const char* volfile)
 {
 	cout << "the input is a point cloud file !" << endl;
-	cout << "Note: it only works for volume calculation of stockpile at this stage!" << endl;
-
-	//cout << "Meshing point cloud is running!" << endl;
-
+	
 	PointCloud pointcloud;
 	vector<Eigen::Vector3d> bbox(2);
 	vector<Eigen::VectorXd> MetaData;
@@ -88,118 +272,160 @@ void VolPointCloud(const char* volfile)
 	vector<Eigen::Vector3d> point3D = ReadLas(volfile, bbox, MetaData, extraDims);
 	PointCloudAI* pCloud = new PointCloudAI(point3D, bbox);
 
-	Eigen::Vector3d avgPoint = pCloud->averagePointCloud();
-	for (vector<Eigen::Vector3d>::iterator it = pCloud->m_point3D.begin(); it != pCloud->m_point3D.end(); it++) {
-		pointcloud.points_.push_back(*it - avgPoint);
-		//pointcloud.points_.push_back(*it);
-	}
+	cout << "the point cloud has " << point3D.size() << " points!" << endl;
 
-	const KDTreeSearchParam& search_param = KDTreeSearchParamKNN(30);
-	pointcloud.EstimateNormals(search_param);
-	vector<Eigen::Vector3d> Normals = pointcloud.normals_;
+	cout << "Meshing the point cloud is running!" << endl;
 
-	// reload points into pointcloud
-	pointcloud.points_.clear();
-	for (vector<Eigen::Vector3d>::iterator it = pCloud->m_point3D.begin(); it != pCloud->m_point3D.end(); it++) {
-		pointcloud.points_.push_back(*it);
-	}
-
-	pointcloud.normals_.clear();
-	for (int i = 0; i < Normals.size(); i++) {
-
-		if (Normals[i].dot(avgPoint - pointcloud.points_[i]) > 0)
-		{
-			pointcloud.normals_.push_back(Normals[i]);
-		}
-		else
-		{
-			pointcloud.normals_.push_back(-1 * Normals[i]);
-		}
-	}
-
-
-	if (!pointcloud.HasNormals())
+	/*Delanuary Triangulation*/
+	std::vector<double> coords;
+	for (int i = 0; i < pCloud->m_point3D.size(); i++)
 	{
-		cout << "the point cloud has no normal!" << endl;
-		return;
+		coords.push_back(pCloud->m_point3D[i][0]);
+		coords.push_back(pCloud->m_point3D[i][1]);
 	}
-	auto value = open3d::geometry::TriangleMesh::CreateFromPointCloudPoisson(pointcloud, 10);
 
-	TriangleMesh trimesh;
-	auto v = std::get < 0 >(value);
-	//auto v = value;
-	trimesh = *(v.get());
+	std::clock_t start;
+	double duration;
+	start = std::clock(); // get current time
+	delaunator::Delaunator d(coords);
+	duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+	std::cout << "Meshing took " << duration << "seconds" << std::endl;
 
-	AxisAlignedBoundingBox boundbox;
-	boundbox = pointcloud.GetAxisAlignedBoundingBox();
-	TriangleMesh cropmesh = *(trimesh.Crop(boundbox).get());
+	/*writing triangulation into a mesh (.*ply)*/
+	open3d::geometry::TriangleMesh trimesh;
+	for (std::size_t i = 0; i < d.triangles.size(); i += 3) {
 
-
-	cropmesh.RemoveDegenerateTriangles();
-	cropmesh.RemoveDuplicatedTriangles();
-	cropmesh.RemoveDuplicatedVertices();
-	cropmesh.RemoveNonManifoldEdges();
-	cropmesh.RemoveUnreferencedVertices();
-
-	Eigen::Vector3d minconer = bbox.at(0);
-	auto GetSignedVolumeOfTriangle = [&](size_t tidx) {
-		const Eigen::Vector3i& triangle = cropmesh.triangles_[tidx];
-		const Eigen::Vector3d& vertex0 = cropmesh.vertices_[triangle(0)] - minconer;
-		const Eigen::Vector3d& vertex1 = cropmesh.vertices_[triangle(1)] - minconer;
-		const Eigen::Vector3d& vertex2 = cropmesh.vertices_[triangle(2)] - minconer;
-		return vertex0.dot(vertex1.cross(vertex2)) / 6.0;
-	};
-
-	double volume = 0;
-	int64_t num_triangles = cropmesh.triangles_.size();
-	cout << "the number of triangles in mesh: " << num_triangles << endl;
-#pragma omp parallel for reduction(+ : volume) num_threads(utility::EstimateMaxThreads())
-	for (int64_t tidx = 0; tidx < num_triangles; ++tidx) {
-		volume += GetSignedVolumeOfTriangle(tidx);
+		Eigen::Vector3i aa(d.triangles[i], d.triangles[i + 1], d.triangles[i + 2]);
+		trimesh.triangles_.push_back(aa);
 	}
-	cout << "the volume of the point cloud is: " << std::abs(volume) << endl;
+	trimesh.vertices_ = pCloud->m_point3D;
 
-	//open3d::io::WriteTriangleMesh("o3dPoisson.ply", cropmesh);
+	const char* SavedTriName = CombineFileName(volfile, "_MESH.ply");
+
+	open3d::io::WriteTriangleMesh(SavedTriName, trimesh);
 	
-}
+	/*boundary detection of the mesh above*/
+	std::vector<int> boundaryindices;
 
-void VolMesh(const char* volfile)
-{
-	cout << "the input is a mesh file!" << endl;
-	cout << "Reading the input mesh!" << endl;
-	TriangleMesh trimesh;
-	open3d::io::ReadTriangleMesh(volfile, trimesh);
+	start = std::clock(); // get current time
+	boundaryindices = findboundary(d, coords.size());
+	duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+	std::cout << "Boundary detection took " << duration << "seconds" << std::endl;
 
-	/*if (!trimesh.IsWatertight()) {
-		cout << "The mesh is not watertight, and the volume may be not accurate!" << endl;
+	/*rewrite a ply file with boundary points as red */
+	vector<Eigen::Vector3d> colors;
+	for (int i = 0; i < trimesh.vertices_.size(); i++)
+	{
+		colors.push_back(Eigen::Vector3d(1, 1, 1));
 	}
 
-	if (!trimesh.IsOrientable()) {
-		cout << "The mesh is not orientable, and the volume may be not accurate!" << endl;
-	}*/
-
-	Eigen::Vector3d minconer = trimesh.GetMinBound();
-	auto GetSignedVolumeOfTriangle = [&](size_t tidx) {
-		const Eigen::Vector3i& triangle = trimesh.triangles_[tidx];
-		const Eigen::Vector3d& vertex0 = trimesh.vertices_[triangle(0)] - minconer;
-		const Eigen::Vector3d& vertex1 = trimesh.vertices_[triangle(1)] - minconer;
-		const Eigen::Vector3d& vertex2 = trimesh.vertices_[triangle(2)] - minconer;
-		return vertex0.dot(vertex1.cross(vertex2)) / 6.0;
-	};
-
-	double volume = 0;
-	int64_t num_triangles = trimesh.triangles_.size();
-	cout << "the number of triangles in mesh: " << num_triangles << endl;
-#pragma omp parallel for reduction(+ : volume) num_threads(utility::EstimateMaxThreads())
-	for (int64_t tidx = 0; tidx < num_triangles; ++tidx) {
-		volume += GetSignedVolumeOfTriangle(tidx);
+	// give red to the boundarypoints
+	for (int i = 0; i < boundaryindices.size(); i++)
+	{
+		colors[boundaryindices[i]] = Eigen::Vector3d(1, 0, 0);
 	}
-	cout << "the volume of the mesh is: " << std::abs(volume) 
-		<< " (The value may not be accurate if the mesh is not Watertight!)" << endl;
 
+	PaintMesh(trimesh, colors);
+	SavedTriName = CombineFileName(volfile, "_BoundaryPoints.ply");
+	open3d::io::WriteTriangleMesh(SavedTriName, trimesh);
+
+	cout << "Fitting a plane to the boundary points!" << endl;
+
+	// fit plane with boundary points
+	vector<Eigen::Vector3d> boundarypoints;
+	for (int i = 0; i < boundaryindices.size(); i++)
+	{
+		boundarypoints.push_back(trimesh.vertices_[boundaryindices[i]]);
+	}
+
+	double N[4];
+	planefitABC(boundarypoints, N);
+
+	Eigen::Vector3d normals(N[0], N[1], N[2]);
+
+	vector <double> distances;
+
+	for (int j = 0; j < boundarypoints.size(); j++)
+	{
+		distances.push_back(std::abs(boundarypoints[j].dot(normals) + N[3]));
+	}
+
+	double roughness = stdvariance(distances);
+
+	cout << "the std derivation of the distances (boundary points to the fit plane): " << roughness << endl;
+
+	/* draw the fitting plane */
+	// plot a mesh plane
+	vector<Eigen::Vector3d> Cornerpoints;
+	vector<Eigen::Vector3d> CornerProjpoints;
+	vector<double> Cornerdistoplane;
+
+	Eigen::Vector3d maxcorner = trimesh.GetMaxBound();
+	Eigen::Vector3d mincorner = trimesh.GetMinBound();
+
+	Eigen::Vector3d aa;
+	aa[0] = mincorner[0];
+	aa[1] = mincorner[1];
+	aa[2] = maxcorner[2];
+	Cornerpoints.push_back(aa);
+
+	aa[0] = mincorner[0];
+	aa[1] = maxcorner[1];
+	aa[2] = maxcorner[2];
+	Cornerpoints.push_back(aa);
+
+	aa[0] = maxcorner[0];
+	aa[1] = mincorner[1];
+	aa[2] = maxcorner[2];
+	Cornerpoints.push_back(aa);
+
+	aa[0] = maxcorner[0];
+	aa[1] = maxcorner[1];
+	aa[2] = maxcorner[2];
+	Cornerpoints.push_back(aa);
+
+	ProjDisPoint(Cornerpoints, N, CornerProjpoints, Cornerdistoplane);
+
+	// save triangle into a plane mesh
+	open3d::geometry::TriangleMesh planemesh;
+	Eigen::Vector3i bb;
+	bb[0] = 0;
+	bb[1] = 1;
+	bb[2] = 2;
+	planemesh.triangles_.push_back(bb);
+	bb[0] = 1;
+	bb[1] = 2;
+	bb[2] = 3;
+	planemesh.triangles_.push_back(bb);
+	planemesh.vertices_ = CornerProjpoints;
+
+	SavedTriName = CombineFileName(volfile, "_PlaneMesh.ply");
+	open3d::io::WriteTriangleMesh(SavedTriName, planemesh);
+
+	cout << "vol calculation is running!" << endl;
+
+	// compute projection points and distance to plane for all points
+	vector<Eigen::Vector3d> Projpoints;
+	vector<double> Distoplane;
+	vector<Eigen::Vector3d> Vertices = pCloud->m_point3D;
+	ProjDisPoint(Vertices, N, Projpoints, Distoplane);
+
+	// compute vol;
+	double vol = 0;
+	for (std::size_t i = 0; i < d.triangles.size(); i += 3)
+	{
+		double area = trianglearea(Projpoints[d.triangles[i]], Projpoints[d.triangles[i + 1]], Projpoints[d.triangles[i + 2]]);
+		double dissum = Distoplane[d.triangles[i]] + Distoplane[d.triangles[i + 1]] +
+			Distoplane[d.triangles[i + 2]];
+		vol += 1.0 / 3 * area * dissum;
+	}
+
+	cout << "the volume calculated is: " << vol << endl;
+
+	cout << "The mesh file, boundary points and the fit plane have been saved in the working directory!" << endl;
 }
 
-// automatical volume change calculation for two scans
+
 void Volcal(const char* groundfile, const char* ceilfile)
 {
 	if (!is_file_exist(groundfile))

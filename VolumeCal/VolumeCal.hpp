@@ -4,8 +4,11 @@
 # include "../shared/PointCloudAI.hpp"
 # include "open3d/io/TriangleMeshIO.h"
 
+# include <armadillo>
+
 using namespace std;
 using namespace open3d::geometry;
+using namespace arma;
 
 // the cell info
 struct Cell {
@@ -43,9 +46,19 @@ bool VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d>
 	double gridstep, VolumeResults& result, double &ratio, 
 	FillEmptyStrategy fillstrategy = FillEmptyStrategy::EMPTY, bool fixedgrid=false, int projtype=0);
 
-void VolMesh(const char* volfile);
 void VolPointCloud(const char* volfile);
 
 void SaveResult(const char* SavedReportName, double gridstep, VolumeResults result, bool optimalgrid=false);
 
+void PaintMesh(open3d::geometry::TriangleMesh& mesh,
+	const vector<Eigen::Vector3d>& color);
 
+template<typename T>
+T stdvariance(const std::vector<T>& vec);
+
+bool planefitABC(vector<Eigen::Vector3d> points, double n[4]);
+
+void ProjDisPoint(vector<Eigen::Vector3d> points, double* n, 
+	vector<Eigen::Vector3d>& Projpoints, vector<double>& distoplane);
+
+double trianglearea(Eigen::Vector3d A, Eigen::Vector3d B, Eigen::Vector3d C);
