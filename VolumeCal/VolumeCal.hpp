@@ -45,7 +45,7 @@ bool VolumeDiffCal(vector<Eigen::Vector3d> groundpoints, vector<Eigen::Vector3d>
 	Eigen::Vector3d miniCorner, Eigen::Vector3d maxiCorner,
 	double gridstep, VolumeResults& result, double &ratio, 
 	FillEmptyStrategy fillstrategy = FillEmptyStrategy::EMPTY, bool fixedgrid=false, int projtype=0);
-
+void VolMesh(const char* volfile);
 void VolPointCloud(const char* volfile);
 
 void SaveResult(const char* SavedReportName, double gridstep, VolumeResults result, bool optimalgrid=false);

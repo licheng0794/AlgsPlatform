@@ -63,8 +63,49 @@ void Volcal(const char* volfile)
 	{
 		VolPointCloud(volfile);
 	}
+	if (filestr.substr(filestr.find_last_of(".") + 1) == "ply" |
+		filestr.substr(filestr.find_last_of(".") + 1) == "obj")
+	{
+		VolMesh(volfile);
+	}
 
 	return;
+}
+
+void VolMesh(const char* volfile)
+{
+	cout << "the input is a mesh file!" << endl;
+	cout << "Reading the input mesh!" << endl;
+	TriangleMesh trimesh;
+	open3d::io::ReadTriangleMesh(volfile, trimesh);
+
+	/*if (!trimesh.IsWatertight()) {
+		cout << "The mesh is not watertight, and the volume may be not accurate!" << endl;
+	}
+
+	if (!trimesh.IsOrientable()) {
+		cout << "The mesh is not orientable, and the volume may be not accurate!" << endl;
+	}*/
+
+	Eigen::Vector3d minconer = trimesh.GetMinBound();
+	auto GetSignedVolumeOfTriangle = [&](size_t tidx) {
+		const Eigen::Vector3i& triangle = trimesh.triangles_[tidx];
+		const Eigen::Vector3d& vertex0 = trimesh.vertices_[triangle(0)] - minconer;
+		const Eigen::Vector3d& vertex1 = trimesh.vertices_[triangle(1)] - minconer;
+		const Eigen::Vector3d& vertex2 = trimesh.vertices_[triangle(2)] - minconer;
+		return vertex0.dot(vertex1.cross(vertex2)) / 6.0;
+	};
+
+	double volume = 0;
+	int64_t num_triangles = trimesh.triangles_.size();
+	cout << "the number of triangles in mesh: " << num_triangles << endl;
+#pragma omp parallel for reduction(+ : volume) num_threads(utility::EstimateMaxThreads())
+	for (int64_t tidx = 0; tidx < num_triangles; ++tidx) {
+		volume += GetSignedVolumeOfTriangle(tidx);
+	}
+	cout << "the volume of the mesh is: " << std::abs(volume)
+		<< " (The value may not be accurate if the mesh is not Watertight!)" << endl;
+
 }
 
 // N is the number of points
@@ -326,18 +367,37 @@ void VolPointCloud(const char* volfile)
 	}
 
 	PaintMesh(trimesh, colors);
-	SavedTriName = CombineFileName(volfile, "_BoundaryPoints.ply");
-	open3d::io::WriteTriangleMesh(SavedTriName, trimesh);
+	SavedTriName = CombineFileName(volfile, "_toes.ply");
 
-	cout << "Fitting a plane to the boundary points!" << endl;
-
-	// fit plane with boundary points
 	vector<Eigen::Vector3d> boundarypoints;
 	for (int i = 0; i < boundaryindices.size(); i++)
 	{
 		boundarypoints.push_back(trimesh.vertices_[boundaryindices[i]]);
 	}
 
+	//open3d::io::WriteTriangleMesh(SavedTriName, trimesh);
+	// save toes as a las file
+	vector<ExtraDim> extraDimsbound;
+	vector<Eigen::VectorXd> MetaDatabound;
+	for (int i = 0; i < boundaryindices.size(); i++)
+	{
+		if (!extraDims.empty())
+		{
+			extraDimsbound.push_back(extraDims[boundaryindices[i]]);
+		}
+		
+		MetaDatabound.push_back(MetaData[boundaryindices[i]]);
+	}
+
+	const char* SavedLasName = CombineFileName(volfile, "_toes.las");
+
+	SaveLas(SavedLasName, boundarypoints, MetaDatabound, extraDimsbound);
+
+
+
+	cout << "Fitting a plane to the boundary points!" << endl;
+
+	// fit plane with boundary points
 	double N[4];
 	planefitABC(boundarypoints, N);
 
@@ -422,7 +482,7 @@ void VolPointCloud(const char* volfile)
 
 	cout << "the volume calculated is: " << vol << endl;
 
-	cout << "The mesh file, boundary points and the fit plane have been saved in the working directory!" << endl;
+	cout << "The mesh file (ply), toes (las) and the fit plane (ply) have been saved in the working directory!" << endl;
 }
 
 
