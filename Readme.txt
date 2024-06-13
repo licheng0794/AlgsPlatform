@@ -45,7 +45,7 @@ Examples:
 
 
 log:
-date: 09-Feb-2022
+date:
 revision:
 1. in CSF, automatically save filename_ground.las and filename_non_ground.las
 2. added calculation time in volume calculation
